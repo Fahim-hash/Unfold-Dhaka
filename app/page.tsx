@@ -80,7 +80,6 @@ export default function Home() {
         style:'https://tiles.openfreemap.org/styles/liberty',
         center:[90.405,23.752],zoom:13,pitch:62,bearing:-18,
         antialias:true, maxPitch:78, minZoom:9, maxZoom:20,
-        attributionControl:true
       });
       mapRef.current=map;
       map.addControl(new mod.NavigationControl({showCompass:true,visualizePitch:true}), 'bottom-right');
@@ -88,7 +87,7 @@ export default function Home() {
       map.on('load',()=>{
         if(cancelled)return;
         const style=map.getStyle();
-        const buildingLayer=style.layers?.find(l=>(l as {['source-layer']?:string;type:string})['source-layer']==='building'&&l.type==='fill');
+        const labelLayer=style.layers?.find(l=>l.type==='symbol');
         if(!map.getLayer('unfold-3d-buildings')){
           map.addLayer({
             id:'unfold-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',
@@ -100,7 +99,7 @@ export default function Home() {
               'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],
               'fill-extrusion-opacity':0.9
             }
-          },buildingLayer?.id);
+          },labelLayer?.id);
         }
         setStyleReady(true);setMapReady(true);
       });
