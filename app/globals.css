@@ -59,3 +59,13 @@ button:active{transform:translateY(1px)}
 .photo-loading:before{content:"";width:12px;height:12px;border:2px solid #d6e2d2;border-top-color:#2b664b;border-radius:50%;animation:photo-spin .8s linear infinite}
 @keyframes photo-spin{to{transform:rotate(360deg)}}
 @media(max-width:650px){.place-photo img{height:145px}.place-photo{margin-bottom:10px}}
+
+
+/* Featured landmark information cards */
+.landmark-facts{margin:0 0 13px;padding:12px;border:1px solid #e0e7d9;border-radius:10px;background:linear-gradient(135deg,#f4f6ed,#fffaf0)}
+.landmark-facts-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;color:#8c6a3d;font:9px var(--mono);letter-spacing:1px}
+.landmark-facts-head span{font-size:15px;color:#b68143}
+.landmark-fact{display:flex;flex-direction:column;gap:3px;padding:7px 0;border-top:1px solid #e3e8dc}
+.landmark-fact span{font-size:9px;color:#859187}
+.landmark-fact b{font-size:11px;line-height:1.45;color:#264a39;font-weight:600}
+.landmark-facts .landmark-note{margin:8px 0 0;padding-top:8px;border-top:1px solid #e3e8dc;font-size:9px;line-height:1.55;color:#79867b}
