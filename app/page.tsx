@@ -62,6 +62,7 @@ function distanceKm(a:{lat:number;lng:number},b:{lat:number;lng:number}) {
 }
 export default function Home() {
   const mapContainer = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<MapLibreMap|null>(null);
   const markersRef = useRef<Map<number,MapLibreMarker>>(new Map());
   const routeRef = useRef<number[]>([]);
@@ -87,6 +88,16 @@ export default function Home() {
     setSelected(p);
     if(fly&&mapRef.current) mapRef.current.flyTo({center:[p.lng,p.lat],zoom:16,pitch:65,bearing:-15,duration:1100});
     setMobilePanel(false);
+  },[]);
+  useEffect(()=>{
+    const onKeyDown=(event:KeyboardEvent)=>{
+      if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'){
+        event.preventDefault();searchInputRef.current?.focus();
+      }
+      if(event.key==='Escape'){setSelected(null);setNotice('');setMobilePanel(false);}
+    };
+    window.addEventListener('keydown',onKeyDown);
+    return ()=>window.removeEventListener('keydown',onKeyDown);
   },[]);
   useEffect(()=>{
     try { const v=localStorage.getItem('unfold-dhaka-favorites'); if(v) setFavorites(JSON.parse(v) as number[]); } catch {}
@@ -154,9 +165,9 @@ export default function Home() {
   },[routeLine,mapReady]);
   const addStop = (p:Place)=>{
     setRoute(prev=>{const next=prev.includes(p.id)?prev:[...prev,p.id];routeRef.current=next;return next;});
-    setPanel('journey');setNotice(p.name+' added to your journey');
+    setRouteLine([]);setRouteInfo(null);setPanel('journey');setNotice(p.name+' added to your journey');
   };
-  const removeStop=(id:number)=>setRoute(prev=>prev.filter(x=>x!==id));
+  const removeStop=(id:number)=>{setRoute(prev=>prev.filter(x=>x!==id));setRouteLine([]);setRouteInfo(null);};
   const planRoute=async()=>{
     const ordered=route.map(id=>places.find(p=>p.id===id)).filter((p):p is Place=>Boolean(p));
     if(ordered.length<2){setNotice('Add at least two places to map a route.');return;}
@@ -168,7 +179,7 @@ export default function Home() {
       const data=await response.json();
       if(data.code!=='Ok'||!data.routes?.[0])throw new Error('No walkable route found for these stops');
       const r=data.routes[0];setRouteLine(r.geometry.coordinates as [number,number][]);setRouteInfo({km:r.distance/1000,minutes:Math.max(1,Math.round(r.duration/60))});
-      const map=mapRef.current;if(map){const maplibre=await import('maplibre-gl');const coords=r.geometry.coordinates as [number,number][];const bounds=coords.reduce((b,c)=>b.extend(c),new maplibre.LngLatBounds(coords[0],coords[0]));map.fitBounds(bounds,{padding:{top:100,bottom:100,left:390,right:80},duration:900,maxZoom:16,pitch:58});}
+      const map=mapRef.current;if(map){const maplibre=await import('maplibre-gl');const coords=r.geometry.coordinates as [number,number][];const bounds=coords.reduce((b,c)=>b.extend(c),new maplibre.LngLatBounds(coords[0],coords[0]));map.fitBounds(bounds,{padding:{top:100,bottom:100,left:window.innerWidth>650?390:36,right:36},duration:900,maxZoom:16,pitch:58});}
       setNotice('Walking route drawn on the 3D map. Times are estimates.');
     }catch(e){setNotice(e instanceof Error?e.message:'Could not create route. Try again.');}
     finally{setRouteLoading(false);}
@@ -185,9 +196,10 @@ export default function Home() {
   const flyToArea=(a:string)=>{setArea(a);const bounds:Record<string,[[number,number],[number,number]]>={'Old Dhaka':[[90.37,23.69],[90.42,23.73]],'Shahbagh':[[90.38,23.72],[90.41,23.75]],'Ramna':[[90.38,23.72],[90.42,23.75]],'Central Dhaka':[[90.38,23.72],[90.43,23.78]],'Dhanmondi':[[90.36,23.72],[90.40,23.77]],'Gulshan':[[90.39,23.77],[90.44,23.82]],'Mirpur':[[90.32,23.78],[90.38,23.84]],'Uttara':[[90.36,23.84],[90.43,23.90]],'Narayanganj':[[90.46,23.59],[90.55,23.64]],'University Area':[[90.385,23.725],[90.405,23.74]],'Segunbagicha':[[90.395,23.725],[90.415,23.745]],'Agargaon':[[90.365,23.765],[90.395,23.79]],'Sher-e-Bangla Nagar':[[90.36,23.745],[90.395,23.78]],'Baridhara':[[90.405,23.795],[90.44,23.825]],'Banani':[[90.39,23.78],[90.42,23.81]],'Wari':[[90.405,23.705],[90.43,23.73]],'Savar':[[90.24,23.88],[90.29,23.94]],'Ashulia':[[90.29,23.86],[90.36,23.92]],'Tongi':[[90.385,23.88],[90.43,23.92]],'Satarkul':[[90.43,23.77],[90.48,23.82]]};const b=bounds[a];if(b)mapRef.current?.fitBounds(b,{padding:100,duration:850,pitch:60});else mapRef.current?.flyTo({center:[90.405,23.752],zoom:11,pitch:58,duration:850});};
   return <main className="map-app">
     <div className="map-canvas" ref={mapContainer} aria-label="Interactive 3D map of Greater Dhaka"/>
+    {!mapReady&&<div className="map-loading" role="status"><span className="loading-mark">u<span>↗</span></span><b>Unfold Dhaka</b><span>Preparing your 3D city…</span><div className="loading-track"><i/></div></div>}
     <header className="map-top">
       <a className="brand" href="/" aria-label="Unfold Dhaka home"><span className="brand-mark">u<span>↗</span></span><span><b>unfold<span>dhaka</span></b><small>GREATER DHAKA, IN 3D</small></span></a>
-      <label className="map-search"><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={bn?'জায়গা খুঁজুন…':'Search places, neighbourhoods…'} aria-label="Search places"/>{query&&<button onClick={()=>setQuery('')} aria-label="Clear search">×</button>}<kbd>⌘ K</kbd></label>
+      <label className="map-search"><span>⌕</span><input ref={searchInputRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder={bn?'জায়গা খুঁজুন…':'Search places, neighbourhoods…'} aria-label="Search places"/>{query&&<button onClick={()=>setQuery('')} aria-label="Clear search">×</button>}<kbd>⌘ K</kbd></label>
       <div className="top-actions"><button className="language" onClick={()=>setBn(!bn)}>{bn?'EN':'বাংলা'}</button><button className="location-button" onClick={useMyLocation}>{locating?'Locating…':'◎ Near me'}</button></div>
     </header>
     <aside className={'map-panel '+(mobilePanel?'panel-open':'')}>
@@ -199,13 +211,13 @@ export default function Home() {
         <div className="places-list">{nearest.map(p=><article key={p.id} className={'place-row '+(selected?.id===p.id?'selected':'')}><button className="place-main" onClick={()=>choose(p)}><span className="place-symbol">{p.icon}</span><span className="place-text"><b>{bn?p.bn:p.name}</b><small>{p.area} <i>·</i> {p.kind}{nearby?' · '+distanceKm(nearby,p).toFixed(1)+' km away':''}</small></span><span className="row-arrow">↗</span></button><button className={'save-mini '+(favorites.includes(p.id)?'is-saved':'')} onClick={()=>toggleFavorite(p)} aria-label={favorites.includes(p.id)?'Remove saved place':'Save place'}>{favorites.includes(p.id)?'★':'☆'}</button></article>)}{!filtered.length&&<div className="no-results">Nothing here yet. Try a different search.</div>}</div>
         <div className="panel-bottom"><span className="live-dot"/><span>{styleReady?'3D map active':'Loading 3D city map'} <small>· Open map data</small></span><button onClick={()=>setPanel('journey')}>Plan a day ↗</button></div>
       </>:panel==='journey'?<><div className="panel-intro compact"><div className="kicker">MAKE A DAY OF IT</div><h2>Your journey<span className="count-pill">{route.length} stops</span></h2><p>Choose places, put them in your preferred order, then draw a route across the city.</p></div>
-        <div className="journey-tools"><button onClick={()=>{setRoute([]);setRouteLine([]);setRouteInfo(null);if(mapRef.current&&mapRef.current.getSource('journey-route'))(mapRef.current.getSource('journey-route') as GeoJSONSource).setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[]}});}}>Clear all</button><button className="primary-small" disabled={routeLoading||route.length<2} onClick={planRoute}>{routeLoading?'Drawing route…':'Draw walking route ↗'}</button></div>
+        <div className="journey-tools"><button onClick={()=>{setRoute([]);setRouteLine([]);setRouteInfo(null);setNotice('Journey cleared.');if(mapRef.current&&mapRef.current.getSource('journey-route'))(mapRef.current.getSource('journey-route') as GeoJSONSource).setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[]}});}}>Clear all</button><button className="primary-small" disabled={routeLoading||route.length<2} onClick={planRoute}>{routeLoading?'Drawing route…':'Draw walking route ↗'}</button></div>
         <div className="journey-list">{route.map((id,i)=>{const p=places.find(x=>x.id===id);if(!p)return null;return <article className="stop-row" key={id}><span className="stop-number">{i+1}</span><button className="stop-name" onClick={()=>choose(p)}><b>{p.name}</b><small>{p.area}</small></button><button className="remove-stop" onClick={()=>removeStop(id)} aria-label="Remove stop">×</button></article>})}{route.length===0&&<div className="empty-journey"><span>↗</span><b>Your map, your route.</b><p>Add places from Explore or start with a ready-made itinerary below.</p></div>}</div>
         {routeInfo&&<div className="route-summary"><div><b>{routeInfo.km.toFixed(1)} km</b><small>route distance</small></div><div><b>~{routeInfo.minutes} min</b><small>walking estimate</small></div></div>}
-        <div className="suggested-routes"><div className="list-heading">START WITH A ROUTE</div>{starters.map(s=><button className="starter-route" key={s.id} onClick={()=>{setRoute(s.stops);setRouteLine([]);setRouteInfo(null);setNotice(s.title+' loaded. Draw the route to see it on the map.')}}><span className="starter-icon">↗</span><span><b>{s.title}</b><small>{s.tag} · {s.stops.length} stops</small><em>{s.desc}</em></span><span>›</span></button>)}</div>
+        <div className="suggested-routes"><div className="list-heading">START WITH A ROUTE</div>{starters.map(s=><button className="starter-route" key={s.id} onClick={()=>{setRoute(s.stops);routeRef.current=s.stops;setRouteLine([]);setRouteInfo(null);setNotice(s.title+' loaded. Draw the route to see it on the map.')}}><span className="starter-icon">↗</span><span><b>{s.title}</b><small>{s.tag} · {s.stops.length} stops</small><em>{s.desc}</em></span><span>›</span></button>)}</div>
       </>:<><div className="panel-intro compact"><div className="kicker">YOUR PERSONAL SHORTLIST</div><h2>Saved places</h2><p>Favourites stay on this device. No account needed.</p></div><div className="places-list saved-list">{filtered.map(p=><article key={p.id} className={'place-row '+(selected?.id===p.id?'selected':'')}><button className="place-main" onClick={()=>choose(p)}><span className="place-symbol">{p.icon}</span><span className="place-text"><b>{p.name}</b><small>{p.area} · {p.kind}</small></span><span className="row-arrow">↗</span></button><button className="save-mini is-saved" onClick={()=>toggleFavorite(p)} aria-label="Remove saved place">★</button></article>)}{!filtered.length&&<div className="no-results">Save a place with the ☆ button and it will appear here.</div>}</div></>}
     </aside>
-    <div className="map-caption"><span className="caption-dot"/><b>{styleReady?'GREATER DHAKA · 3D':'PREPARING 3D MAP'}</b><span>Buildings are extruded from available map data</span></div>
+    <div className="map-caption"><span className={styleReady?"caption-dot":"caption-dot caption-dot-loading"}/><b>{styleReady?'GREATER DHAKA · 3D':'PREPARING 3D MAP'}</b><span>Buildings are extruded from available map data</span></div>
     {selected&&<section className="place-card" aria-label="Selected place"><button className="card-close" onClick={()=>setSelected(null)} aria-label="Close place details">×</button><div className="card-kicker">{selected.kind.toUpperCase()} <span>·</span> {selected.area.toUpperCase()}</div><h2>{bn?selected.bn:selected.name}</h2><p>{selected.desc}</p><div className="place-meta"><span>⌖ {selected.lat.toFixed(4)}° N, {selected.lng.toFixed(4)}° E</span><span>Hours not verified</span></div><div className="card-actions"><button className="add-stop" onClick={()=>addStop(selected)}>{route.includes(selected.id)?'✓ In your journey':'＋ Add stop'}</button><button className={'favorite-action '+(favorites.includes(selected.id)?'is-saved':'')} onClick={()=>toggleFavorite(selected)}>{favorites.includes(selected.id)?'★ Saved':'☆ Save'}</button><button className="fly-action" onClick={()=>choose(selected)}>Fly to ↗</button></div></section>}
     {notice&&<div className="notice" role="status"><span>{notice}</span><button onClick={()=>setNotice('')}>×</button></div>}
     <button className="mobile-map-menu" onClick={()=>setMobilePanel(true)}>☰ Places & routes</button>
