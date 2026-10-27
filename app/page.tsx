@@ -1,7 +1,7 @@
 'use client';
 
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import type maplibregl from 'maplibre-gl';
+import type {Map as MapLibreMap, Marker as MapLibreMarker, GeoJSONSource, LngLatBounds as MapLibreLngLatBounds} from 'maplibre-gl';
 
 type Place = {
   id: number; name: string; bn: string; area: string; kind: string;
@@ -39,7 +39,7 @@ function distanceKm(a:{lat:number;lng:number},b:{lat:number;lng:number}) {
 }
 export default function Home() {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map|null>(null);
+  const mapRef = useRef<MapLibreMap|null>(null);
   const markersRef = useRef<Map<number,maplibregl.Marker>>(new Map());
   const routeRef = useRef<number[]>([]);
   const [mapReady,setMapReady] = useState(false);
@@ -88,7 +88,7 @@ export default function Home() {
       map.on('load',()=>{
         if(cancelled)return;
         const style=map.getStyle();
-        const buildingLayer=style.layers?.find(l=>l['source-layer']==='building'&&l.type==='fill');
+        const buildingLayer=style.layers?.find(l=>(l as {['source-layer']?:string;type:string}).['source-layer']==='building'&&l.type==='fill');
         if(!map.getLayer('unfold-3d-buildings')){
           map.addLayer({
             id:'unfold-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',
@@ -124,7 +124,7 @@ export default function Home() {
   },[filtered,mapReady,choose]);
   useEffect(()=>{
     const map=mapRef.current;if(!map||!mapReady)return;
-    const existing=map.getSource('journey-route') as maplibregl.GeoJSONSource|undefined;
+    const existing=map.getSource('journey-route') as GeoJSONSource|undefined;
     if(existing){existing.setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:routeLine}});return;}
     map.addSource('journey-route',{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:routeLine}}});
     map.addLayer({id:'journey-route-glow',type:'line',source:'journey-route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#f1b75f','line-width':9,'line-opacity':0.22}});
@@ -146,7 +146,7 @@ export default function Home() {
       const data=await response.json();
       if(data.code!=='Ok'||!data.routes?.[0])throw new Error('No walkable route found for these stops');
       const r=data.routes[0];setRouteLine(r.geometry.coordinates as [number,number][]);setRouteInfo({km:r.distance/1000,minutes:Math.max(1,Math.round(r.duration/60))});
-      const map=mapRef.current;if(map){const coords=r.geometry.coordinates as [number,number][];const bounds=coords.reduce((b,c)=>b.extend(c),new (await import('maplibre-gl')).LngLatBounds(coords[0],coords[0]));map.fitBounds(bounds,{padding:{top:100,bottom:100,left:390,right:80},duration:900,maxZoom:16,pitch:58});}
+      const map=mapRef.current;if(map){const coords=r.geometry.coordinates as [number,number][];const bounds=coords.reduce((b,c)=>b.extend(c),new MapLibreLngLatBounds(coords[0],coords[0]));map.fitBounds(bounds,{padding:{top:100,bottom:100,left:390,right:80},duration:900,maxZoom:16,pitch:58});}
       setNotice('Walking route drawn on the 3D map. Times are estimates.');
     }catch(e){setNotice(e instanceof Error?e.message:'Could not create route. Try again.');}
     finally{setRouteLoading(false);}
