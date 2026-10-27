@@ -69,3 +69,21 @@ button:active{transform:translateY(1px)}
 .landmark-fact span{font-size:9px;color:#859187}
 .landmark-fact b{font-size:11px;line-height:1.45;color:#264a39;font-weight:600}
 .landmark-facts .landmark-note{margin:8px 0 0;padding-top:8px;border-top:1px solid #e3e8dc;font-size:9px;line-height:1.55;color:#79867b}
+
+/* Distinctive traffic-flow HUD and animated city-road visualisation */
+.traffic-hud{position:absolute;z-index:9;top:151px;right:15px;width:250px;padding:13px;border:1px solid #ffffffb8;border-radius:13px;background:rgba(15,35,31,.91);color:#f2f3e8;box-shadow:0 14px 38px #102b2438;backdrop-filter:blur(16px);font-family:var(--sans)}
+.traffic-hud-head{display:grid;grid-template-columns:8px 1fr;align-items:center;column-gap:8px;row-gap:4px}
+.traffic-hud-head b{font:9px var(--mono);letter-spacing:.8px;color:#dff2e6}
+.traffic-hud-head small{grid-column:2;font:8px var(--mono);letter-spacing:.45px;color:#8da99b}
+.traffic-live-dot{width:7px;height:7px;border-radius:50%;background:#51e0a7;box-shadow:0 0 0 4px #51e0a71a;animation:traffic-pulse 1.8s infinite}
+.traffic-live-dot.pending{background:#f1b65a;box-shadow:0 0 0 4px #f1b65a1a}
+.traffic-hud-stats{display:flex;flex-direction:column;gap:7px;margin:12px 0;padding:10px 0;border-top:1px solid #ffffff1c;border-bottom:1px solid #ffffff1c;font-size:10px;color:#bdcec4}
+.traffic-hud-stats span{display:flex;align-items:center;gap:8px}
+.traffic-key{display:inline-block;width:9px;height:9px;border-radius:50%;background:#f8f4df;box-shadow:0 0 0 2px #ffffff20}
+.traffic-key.bus-key{border-radius:2px;background:#f4b64e}
+.traffic-toggle{width:100%;padding:9px 10px;border:1px solid #567367;border-radius:8px;background:#203f36;color:#c6d9cd;text-align:left;font-size:10px;font-weight:700}
+.traffic-toggle.is-on{border-color:#4c997a;background:#174d3d;color:#9cf1c8}
+.traffic-disclaimer{margin-top:9px;font-size:9px;line-height:1.5;color:#8da69a}
+@keyframes traffic-pulse{50%{box-shadow:0 0 0 6px #51e0a700}}
+@media(max-width:900px){.traffic-hud{top:155px;right:12px;width:224px}}
+@media(max-width:650px){.traffic-hud{top:160px;right:8px;width:188px;padding:10px;border-radius:11px}.traffic-hud-head b{font-size:8px}.traffic-hud-head small{font-size:7px}.traffic-hud-stats{margin:9px 0;padding:8px 0;font-size:9px}.traffic-toggle{padding:8px;font-size:9px}.traffic-disclaimer{font-size:8px}.map-caption{right:auto;left:9px;top:110px;max-width:calc(100vw - 18px)}}
