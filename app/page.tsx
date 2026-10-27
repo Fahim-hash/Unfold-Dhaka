@@ -1,7 +1,7 @@
 'use client';
 
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import type {Map as MapLibreMap, Marker as MapLibreMarker, GeoJSONSource} from 'maplibre-gl';
+import type {Map as MapLibreMap, GeoJSONSource} from 'maplibre-gl';
 
 type Place = {
   id: number; name: string; bn: string; area: string; kind: string;
@@ -64,7 +64,6 @@ export default function Home() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<MapLibreMap|null>(null);
-  const markersRef = useRef<Map<number,MapLibreMarker>>(new Map());
   const routeRef = useRef<number[]>([]);
   const [mapReady,setMapReady] = useState(false);
   const [query,setQuery] = useState('');
@@ -135,26 +134,35 @@ export default function Home() {
             }
           },labelLayer?.id);
         }
+        if(!map.getSource('unfold-places')){
+          map.addSource('unfold-places',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+          map.addLayer({id:'unfold-place-halo',type:'circle',source:'unfold-places',paint:{'circle-radius':15,'circle-color':'#f7f4e8','circle-opacity':0.96,'circle-stroke-color':'#164b3b','circle-stroke-width':2}});
+          map.addLayer({id:'unfold-place-dots',type:'circle',source:'unfold-places',paint:{'circle-radius':8,'circle-color':'#164b3b','circle-stroke-color':'#fffef7','circle-stroke-width':1.5}});
+          map.addLayer({id:'unfold-place-labels',type:'symbol',source:'unfold-places',layout:{'text-field':['get','icon'],'text-font':['Noto Sans Regular'],'text-size':12,'text-allow-overlap':true,'text-ignore-placement':true},paint:{'text-color':'#fffef7','text-halo-color':'#164b3b','text-halo-width':0.5}});
+        }
+        const openPlace=(event: {features?: Array<{properties?:Record<string,unknown>}>})=>{
+          const id=Number(event.features?.[0]?.properties?.id);
+          const place=places.find(p=>p.id===id);if(place)choose(place);
+        };
+        map.on('click','unfold-place-dots',openPlace);
+        map.on('click','unfold-place-labels',openPlace);
+        for(const layer of ['unfold-place-dots','unfold-place-labels']){
+          map.on('mouseenter',layer,()=>{map.getCanvas().style.cursor='pointer';});
+          map.on('mouseleave',layer,()=>{map.getCanvas().style.cursor='';});
+        }
         setStyleReady(true);setMapReady(true);
       });
       map.on('error',e=>{if(e.error) console.warn('Map tile/style issue',e.error.message);});
       return;
     }).catch(()=>setNotice('The 3D map could not load. Check your connection and reload.'));
-    return ()=>{cancelled=true;mapRef.current?.remove();mapRef.current=null;markersRef.current.clear();};
+    return ()=>{cancelled=true;mapRef.current?.remove();mapRef.current=null;};
   },[]);
   useEffect(()=>{
     const map=mapRef.current;if(!map||!mapReady)return;
-    const modPromise=import('maplibre-gl');
-    void modPromise.then(mod=>{
-      markersRef.current.forEach(marker=>marker.remove());markersRef.current.clear();
-      filtered.forEach(p=>{
-        const el=document.createElement('button');el.className='place-pin';el.type='button';el.setAttribute('aria-label',p.name);el.innerHTML='<span>'+p.icon+'</span>';
-        el.addEventListener('click',()=>choose(p));
-        const marker=new mod.Marker({element:el,anchor:'bottom'}).setLngLat([p.lng,p.lat]).addTo(map);
-        markersRef.current.set(p.id,marker);
-      });
-    });
-  },[filtered,mapReady,choose]);
+    const source=map.getSource('unfold-places') as GeoJSONSource|undefined;
+    if(!source)return;
+    source.setData({type:'FeatureCollection',features:filtered.map(p=>({type:'Feature' as const,properties:{id:p.id,name:p.name,icon:p.icon},geometry:{type:'Point' as const,coordinates:[p.lng,p.lat]}}))});
+  },[filtered,mapReady]);
   useEffect(()=>{
     const map=mapRef.current;if(!map||!mapReady)return;
     const existing=map.getSource('journey-route') as GeoJSONSource|undefined;
