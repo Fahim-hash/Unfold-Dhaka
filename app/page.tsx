@@ -119,6 +119,8 @@ export default function Home() {
   const [styleReady,setStyleReady] = useState(false);
   const [placePhoto,setPlacePhoto] = useState<{id:number;url:string;title:string;source:string}|null>(null);
   const [photoLoading,setPhotoLoading] = useState(false);
+  const [trafficOn,setTrafficOn] = useState(true);
+  const [trafficStatus,setTrafficStatus] = useState<'loading'|'roads-ready'|'offline'>('loading');
   const filtered = useMemo(()=>places.filter(p=>(panel==='saved'||kind==='All places'||p.kind===kind)&&(panel==='saved'||area==='All Greater Dhaka'||p.area===area)&&(panel!=='saved'||favorites.includes(p.id))&&(p.name+' '+p.bn+' '+p.area+' '+p.kind).toLowerCase().includes(query.toLowerCase())),[query,kind,area,panel,favorites]);
   const choose = useCallback((p:Place,fly=true)=>{
     setSelected(p);
@@ -225,6 +227,66 @@ export default function Home() {
     return ()=>{cancelled=true;mapRef.current?.remove();mapRef.current=null;};
   },[]);
   useEffect(()=>{
+    const map=mapRef.current;
+    if(!map||!mapReady)return;
+    let alive=true;
+    let timer=0;
+    let roads: Array<{coordinates:[number,number][];kind:string}>=[];
+    let vehicles: Array<{road:number;progress:number;speed:number;kind:'CAR'|'BUS'|'RICKSHAW'}>=[];
+    const empty={type:'FeatureCollection' as const,features:[]};
+    if(!map.getSource('unfold-traffic-roads')){
+      map.addSource('unfold-traffic-roads',{type:'geojson',data:empty});
+      map.addLayer({id:'unfold-traffic-roads',type:'line',source:'unfold-traffic-roads',layout:{'line-cap':'round','line-join':'round'},paint:{
+        'line-color':['match',['get','flow'],'heavy','#ed665a','busy','#f3b75f','#48b9a0'],
+        'line-width':['interpolate',['linear'],['zoom'],10,1.1,14,3.2,17,5.5],'line-opacity':0.78
+      }});
+      map.addSource('unfold-traffic-vehicles',{type:'geojson',data:empty});
+      map.addLayer({id:'unfold-traffic-vehicles',type:'symbol',source:'unfold-traffic-vehicles',layout:{
+        'text-field':['match',['get','kind'],'BUS','▰','RICKSHAW','◆','●'],
+        'text-font':['Open Sans Semibold'],'text-size':['interpolate',['linear'],['zoom'],10,7,14,11,17,14],
+        'text-allow-overlap':true,'text-ignore-placement':true
+      },paint:{'text-color':['match',['get','kind'],'BUS','#f4b64e','RICKSHAW','#52d8bc','#f8f4df'],'text-halo-color':'#17352e','text-halo-width':1.4}});
+    }
+    const roadSource=()=>map.getSource('unfold-traffic-roads') as GeoJSONSource|undefined;
+    const vehicleSource=()=>map.getSource('unfold-traffic-vehicles') as GeoJSONSource|undefined;
+    const setVisibility=(visible:boolean)=>{for(const id of ['unfold-traffic-roads','unfold-traffic-vehicles'])if(map.getLayer(id))map.setLayoutProperty(id,'visibility',visible?'visible':'none');};
+    setVisibility(trafficOn);
+    const query='[out:json][timeout:25];(way["highway"~"motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street"](23.68,90.28,23.93,90.53););out geom;';
+    void fetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:query})
+      .then(r=>{if(!r.ok)throw new Error('Road network unavailable');return r.json();})
+      .then(data=>{
+        if(!alive)return;
+        const seen=new Set<string>();
+        roads=(data.elements||[]).filter((el:{type?:string;geometry?:Array<{lon:number;lat:number}>;tags?:{highway?:string}})=>el.type==='way'&&Array.isArray(el.geometry)&&el.geometry.length>1)
+          .map((el:{geometry:Array<{lon:number;lat:number}>;tags?:{highway?:string}})=>({coordinates:el.geometry.map(p=>[p.lon,p.lat] as [number,number]),kind:el.tags?.highway||'residential'}))
+          .filter((r:{coordinates:[number,number][];kind:string})=>{const key=r.coordinates.map(p=>p.map(v=>v.toFixed(4)).join(',')).join(';');if(seen.has(key))return false;seen.add(key);return true;});
+        if(!roads.length)throw new Error('No road geometry returned');
+        roadSource()?.setData({type:'FeatureCollection',features:roads.map((r,i)=>({type:'Feature' as const,id:i,properties:{flow:i%7===0?'heavy':i%3===0?'busy':'moving',kind:r.kind},geometry:{type:'LineString' as const,coordinates:r.coordinates}}))});
+        const eligible=roads.map((r,i)=>({r,i})).filter(({r})=>r.coordinates.length>3);
+        if(!eligible.length)throw new Error('No suitable roads');
+        let seed=93025;const rand=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
+        vehicles=Array.from({length:210},(_,i)=>{const pick=eligible[Math.floor(rand()*eligible.length)];return {road:pick.i,progress:rand(),speed:0.00018+rand()*0.00065,kind:i%14===0?'BUS':i%9===0?'RICKSHAW':'CAR'};});
+        setTrafficStatus('roads-ready');
+        const animate=()=>{
+          if(!alive)return;
+          const features=vehicles.flatMap((v,i)=>{const road=roads[v.road];if(!road||road.coordinates.length<2)return [];
+            v.progress+=v.speed*(v.kind==='BUS'?0.72:1);if(v.progress>=1)v.progress-=1;
+            const scaled=v.progress*(road.coordinates.length-1),index=Math.min(road.coordinates.length-2,Math.floor(scaled)),t=scaled-index;
+            const a=road.coordinates[index],b=road.coordinates[index+1];
+            return [{type:'Feature' as const,id:i,properties:{kind:v.kind},geometry:{type:'Point' as const,coordinates:[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]}}];
+          });
+          vehicleSource()?.setData({type:'FeatureCollection',features});
+        };
+        animate();timer=window.setInterval(animate,120);
+      })
+      .catch(error=>{if(alive){console.warn('Traffic road data unavailable',error);setTrafficStatus('offline');}});
+    return ()=>{alive=false;if(timer)window.clearInterval(timer);};
+  },[mapReady]);
+  useEffect(()=>{
+    const map=mapRef.current;if(!map||!mapReady)return;
+    for(const id of ['unfold-traffic-roads','unfold-traffic-vehicles'])if(map.getLayer(id))map.setLayoutProperty(id,'visibility',trafficOn?'visible':'none');
+  },[trafficOn,mapReady]);
+  useEffect(()=>{
     if(!selected){setPlacePhoto(null);setPhotoLoading(false);return;}
     const controller=new AbortController();
     setPlacePhoto(null);setPhotoLoading(true);
@@ -316,6 +378,12 @@ export default function Home() {
       </>:<><div className="panel-intro compact"><div className="kicker">YOUR PERSONAL SHORTLIST</div><h2>Saved places</h2><p>Favourites stay on this device. No account needed.</p></div><div className="places-list saved-list">{filtered.map(p=><article key={p.id} className={'place-row '+(selected?.id===p.id?'selected':'')}><button className="place-main" onClick={()=>choose(p)}><span className="place-symbol">{p.icon}</span><span className="place-text"><b>{p.name}</b><small>{p.area} · {p.kind}</small></span><span className="row-arrow">↗</span></button><button className="save-mini is-saved" onClick={()=>toggleFavorite(p)} aria-label="Remove saved place">★</button></article>)}{!filtered.length&&<div className="no-results">Save a place with the ☆ button and it will appear here.</div>}</div></>}
     </aside>
     <div className="map-caption"><span className={styleReady?"caption-dot":"caption-dot caption-dot-loading"}/><b>{styleReady?'GREATER DHAKA · 3D':'PREPARING 3D MAP'}</b><span>Buildings are extruded from available map data</span></div>
+    <div className="traffic-hud">
+      <div className="traffic-hud-head"><span className={trafficStatus==='roads-ready'?'traffic-live-dot':'traffic-live-dot pending'}/><b>{trafficStatus==='roads-ready'?'ROAD NETWORK LOADED':trafficStatus==='offline'?'TRAFFIC DATA OFFLINE':'FETCHING ROAD NETWORK'}</b><small>OSM · FLOW VISUALISATION</small></div>
+      <div className="traffic-hud-stats"><span><i className="traffic-key car-key"/>210 moving vehicles</span><span><i className="traffic-key bus-key"/>Buses + rickshaws</span></div>
+      <button className={'traffic-toggle '+(trafficOn?'is-on':'')} onClick={()=>setTrafficOn(v=>!v)}>{trafficOn?'◉ Traffic animation on':'○ Show traffic'}</button>
+      <div className="traffic-disclaimer">{trafficStatus==='roads-ready'?'Road geometry fetched live; vehicle movement is simulated.':'Actual traffic speeds require a traffic-data API.'}</div>
+    </div>
     {selected&&<section className="place-card" aria-label="Selected place"><button className="card-close" onClick={()=>setSelected(null)} aria-label="Close place details">×</button><div className="card-kicker">{selected.kind.toUpperCase()} <span>·</span> {selected.area.toUpperCase()}</div><h2>{bn?selected.bn:selected.name}</h2>{placePhoto?.id===selected.id&&<figure className="place-photo"><img src={placePhoto.url} alt={selected.name+' — photo from Wikimedia Commons'} loading="lazy"/><figcaption><span>{placePhoto.title}</span><a href={placePhoto.source} target="_blank" rel="noreferrer">Photo source ↗</a></figcaption></figure>}{photoLoading&&<div className="photo-loading" aria-live="polite">Finding a photo of this place…</div>}<p>{selected.desc}</p>{(selected.id===8||selected.id===40)&&<div className="landmark-facts">
           <div className="landmark-facts-head">LANDMARK NOTES <span>✳</span></div>
           {selected.id===8?<><div className="landmark-fact"><span>Architect</span><b>Louis Isadore Kahn</b></div><div className="landmark-fact"><span>Completed</span><b>1982</b></div><div className="landmark-fact"><span>Known for</span><b>Geometric concrete forms, monumental halls and lake setting</b></div><p className="landmark-note">The national parliament complex is a landmark of modern architecture. The custom map model is a stylised visualisation, not an exact architectural reconstruction.</p></>:<><div className="landmark-fact"><span>Architect</span><b>Hamidur Rahman</b></div><div className="landmark-fact"><span>Commemorates</span><b>Language Movement martyrs of 1952</b></div><div className="landmark-fact"><span>Architecture</span><b>White columns and a curved red backdrop</b></div><p className="landmark-note">A symbolic memorial to the Bengali language movement. The custom map model is an illustrative 3D shape, not a survey-accurate replica.</p></>}
