@@ -20,9 +20,14 @@ A full-screen Greater Dhaka explorer built with Next.js, TypeScript and MapLibre
 - Optional browser geolocation and nearest-place ordering; the coordinates are handled in the browser.
 - Place detail cards, neighbourhood filtering and search.
 
+### Phase 4 — Expanded Greater Dhaka discovery
+- Expanded the curated place catalogue from 16 to 39 map entries, covering additional heritage, culture, architecture, parks, riverside and shopping destinations.
+- Added neighbourhood filters and map framing for areas including Agargaon, Sher-e-Bangla Nagar, Banani, Baridhara, Wari, Savar, Ashulia, Tongi and Satarkul.
+- Kept place hours explicitly unverified instead of inventing opening times.
+
 ## Current data limitations
 
-The app currently has a **starter set of 16 curated places**, not exhaustive coverage of Greater Dhaka. Place hours are explicitly marked as unverified. Building extrusion depends on the coverage and quality of the public vector tiles; it does not mean every building has a verified height or detailed 3D model. Routing and map tiles depend on third-party public services and network access, and their availability or usage limits can change.
+The app currently has **39 curated map entries**, not exhaustive coverage of Greater Dhaka. Some coordinates and descriptions are approximate editorial starter data and should be checked against current local sources before relying on them for travel. Place hours are explicitly marked as unverified. Building extrusion depends on the coverage and quality of the public vector tiles; it does not mean every building has a verified height or detailed 3D model. Routing and map tiles depend on third-party public services and network access, and their availability or usage limits can change.
 
 Walking distance/time are routing-service estimates, not guaranteed travel times. Verify opening hours, access conditions and place details before travelling.
 
