@@ -237,15 +237,15 @@ export default function Home() {
     if(!map.getSource('unfold-traffic-roads')){
       map.addSource('unfold-traffic-roads',{type:'geojson',data:empty});
       map.addLayer({id:'unfold-traffic-roads',type:'line',source:'unfold-traffic-roads',layout:{'line-cap':'round','line-join':'round'},paint:{
-        'line-color':['match',['get','flow'],'heavy','#ed665a','busy','#f3b75f','#48b9a0'],
+        'line-color':'#e7a34f',
         'line-width':['interpolate',['linear'],['zoom'],10,1.1,14,3.2,17,5.5],'line-opacity':0.78
       }},map.getLayer('unfold-3d-buildings')?'unfold-3d-buildings':undefined);
       map.addSource('unfold-traffic-vehicles',{type:'geojson',data:empty});
       map.addLayer({id:'unfold-traffic-vehicles',type:'symbol',source:'unfold-traffic-vehicles',layout:{
-        'text-field':['match',['get','kind'],'BUS','▰','RICKSHAW','◆','●'],
-        'text-font':['Open Sans Semibold'],'text-size':['interpolate',['linear'],['zoom'],10,7,14,11,17,14],
+        'text-field':['match',['get','kind'],'BUS','🚌','RICKSHAW','🛺','CAR','🚗','🚙'],
+        'text-size':['interpolate',['linear'],['zoom'],10,10,13,15,16,19,18,23],
         'text-allow-overlap':true,'text-ignore-placement':true
-      },paint:{'text-color':['match',['get','kind'],'BUS','#f4b64e','RICKSHAW','#52d8bc','#f8f4df'],'text-halo-color':'#17352e','text-halo-width':1.4}});
+      },paint:{'text-halo-color':'#17352e','text-halo-width':1.8}});
     }
     const roadSource=()=>map.getSource('unfold-traffic-roads') as GeoJSONSource|undefined;
     const vehicleSource=()=>map.getSource('unfold-traffic-vehicles') as GeoJSONSource|undefined;
@@ -261,11 +261,11 @@ export default function Home() {
           .map((el:{geometry:Array<{lon:number;lat:number}>;tags?:{highway?:string}})=>({coordinates:el.geometry.map(p=>[p.lon,p.lat] as [number,number]),kind:el.tags?.highway||'residential'}))
           .filter((r:{coordinates:[number,number][];kind:string})=>{const key=r.coordinates.map(p=>p.map(v=>v.toFixed(4)).join(',')).join(';');if(seen.has(key))return false;seen.add(key);return true;});
         if(!roads.length)throw new Error('No road geometry returned');
-        roadSource()?.setData({type:'FeatureCollection',features:roads.map((r,i)=>({type:'Feature' as const,id:i,properties:{flow:i%7===0?'heavy':i%3===0?'busy':'moving',kind:r.kind},geometry:{type:'LineString' as const,coordinates:r.coordinates}}))});
+        roadSource()?.setData({type:'FeatureCollection',features:roads.map((r,i)=>({type:'Feature' as const,id:i,properties:{flow:'traffic',kind:r.kind},geometry:{type:'LineString' as const,coordinates:r.coordinates}}))});
         const eligible=roads.map((r,i)=>({r,i})).filter(({r})=>r.coordinates.length>3);
         if(!eligible.length)throw new Error('No suitable roads');
         let seed=93025;const rand=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
-        vehicles=Array.from({length:210},(_,i)=>{const pick=eligible[Math.floor(rand()*eligible.length)];return {road:pick.i,progress:rand(),speed:0.00018+rand()*0.00065,kind:i%14===0?'BUS':i%9===0?'RICKSHAW':'CAR'};});
+        vehicles=Array.from({length:420},(_,i)=>{const pick=eligible[Math.floor(rand()*eligible.length)];return {road:pick.i,progress:rand(),speed:0.00018+rand()*0.00065,kind:i%14===0?'BUS':i%9===0?'RICKSHAW':'CAR'};});
         setTrafficStatus('roads-ready');
         const animate=()=>{
           if(!alive)return;
@@ -300,9 +300,9 @@ export default function Home() {
           {kind:'tertiary',coordinates:[[90.385,23.744],[90.390,23.748],[90.395,23.752],[90.400,23.756],[90.405,23.760]] as [number,number][]},
           {kind:'tertiary',coordinates:[[90.414,23.735],[90.411,23.742],[90.408,23.749],[90.405,23.756],[90.402,23.763]] as [number,number][]}
         ];
-        roadSource()?.setData({type:'FeatureCollection',features:roads.map((r,i)=>({type:'Feature' as const,id:i,properties:{flow:i%4===0?'heavy':i%2===0?'busy':'moving',kind:r.kind},geometry:{type:'LineString' as const,coordinates:r.coordinates}}))});
+        roadSource()?.setData({type:'FeatureCollection',features:roads.map((r,i)=>({type:'Feature' as const,id:i,properties:{flow:'traffic',kind:r.kind},geometry:{type:'LineString' as const,coordinates:r.coordinates}}))});
         let seed=93025;const rand=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
-        vehicles=Array.from({length:160},(_,i)=>({road:Math.floor(rand()*roads.length),progress:rand(),speed:0.00014+rand()*0.0005,kind:i%12===0?'BUS':i%8===0?'RICKSHAW':'CAR'}));
+        vehicles=Array.from({length:320},(_,i)=>({road:Math.floor(rand()*roads.length),progress:rand(),speed:0.00014+rand()*0.0005,kind:i%12===0?'BUS':i%8===0?'RICKSHAW':'CAR'}));
         setTrafficStatus('demo-network');
         const animate=()=>{
           if(!alive)return;
@@ -417,7 +417,7 @@ export default function Home() {
     <div className="map-caption"><span className={styleReady?"caption-dot":"caption-dot caption-dot-loading"}/><b>{styleReady?'GREATER DHAKA · 3D':'PREPARING 3D MAP'}</b><span>Buildings are extruded from available map data</span></div>
     <div className="traffic-hud">
       <div className="traffic-hud-head"><span className={trafficStatus==='roads-ready'?'traffic-live-dot':'traffic-live-dot pending'}/><b>{trafficStatus==='roads-ready'?'ROAD NETWORK LOADED':trafficStatus==='demo-network'?'DHAKA DEMO ROADS':trafficStatus==='offline'?'TRAFFIC DATA OFFLINE':'FETCHING ROAD NETWORK'}</b><small>OSM · FLOW VISUALISATION</small></div>
-      <div className="traffic-hud-stats"><span><i className="traffic-key car-key"/>210 moving vehicles</span><span><i className="traffic-key bus-key"/>Buses + rickshaws</span></div>
+      <div className="traffic-hud-stats"><span><i className="traffic-key car-key"/>420 simulated vehicles</span><span><i className="traffic-key bus-key"/>Cars · buses · CNG/rickshaws</span></div>
       <button className={'traffic-toggle '+(trafficOn?'is-on':'')} onClick={()=>setTrafficOn(v=>!v)}>{trafficOn?'◉ Traffic animation on':'○ Show traffic'}</button>
       <div className="traffic-disclaimer">{trafficStatus==='roads-ready'?'Road geometry fetched from OSM; vehicle movement is simulated.':trafficStatus==='demo-network'?'Showing built-in Dhaka road corridors; vehicle movement is simulated.':'Actual traffic speeds require a traffic-data API.'}</div>
     </div>
