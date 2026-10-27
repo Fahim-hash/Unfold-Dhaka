@@ -40,7 +40,7 @@ function distanceKm(a:{lat:number;lng:number},b:{lat:number;lng:number}) {
 export default function Home() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap|null>(null);
-  const markersRef = useRef<Map<number,maplibregl.Marker>>(new Map());
+  const markersRef = useRef<Map<number,MapLibreMarker>>(new Map());
   const routeRef = useRef<number[]>([]);
   const [mapReady,setMapReady] = useState(false);
   const [query,setQuery] = useState('');
@@ -88,7 +88,7 @@ export default function Home() {
       map.on('load',()=>{
         if(cancelled)return;
         const style=map.getStyle();
-        const buildingLayer=style.layers?.find(l=>(l as {['source-layer']?:string;type:string}).['source-layer']==='building'&&l.type==='fill');
+        const buildingLayer=style.layers?.find(l=>(l as {['source-layer']?:string;type:string})['source-layer']==='building'&&l.type==='fill');
         if(!map.getLayer('unfold-3d-buildings')){
           map.addLayer({
             id:'unfold-3d-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',
@@ -177,7 +177,7 @@ export default function Home() {
         <div className="places-list">{nearest.map(p=><article key={p.id} className={'place-row '+(selected?.id===p.id?'selected':'')}><button className="place-main" onClick={()=>choose(p)}><span className="place-symbol">{p.icon}</span><span className="place-text"><b>{bn?p.bn:p.name}</b><small>{p.area} <i>·</i> {p.kind}{nearby?' · '+distanceKm(nearby,p).toFixed(1)+' km away':''}</small></span><span className="row-arrow">↗</span></button><button className={'save-mini '+(favorites.includes(p.id)?'is-saved':'')} onClick={()=>toggleFavorite(p)} aria-label={favorites.includes(p.id)?'Remove saved place':'Save place'}>{favorites.includes(p.id)?'★':'☆'}</button></article>)}{!filtered.length&&<div className="no-results">Nothing here yet. Try a different search.</div>}</div>
         <div className="panel-bottom"><span className="live-dot"/><span>{styleReady?'3D map active':'Loading 3D city map'} <small>· Open map data</small></span><button onClick={()=>setPanel('journey')}>Plan a day ↗</button></div>
       </>:panel==='journey'?<><div className="panel-intro compact"><div className="kicker">MAKE A DAY OF IT</div><h2>Your journey<span className="count-pill">{route.length} stops</span></h2><p>Choose places, put them in your preferred order, then draw a route across the city.</p></div>
-        <div className="journey-tools"><button onClick={()=>{setRoute([]);setRouteLine([]);setRouteInfo(null);if(mapRef.current&&mapRef.current.getSource('journey-route'))(mapRef.current.getSource('journey-route') as maplibregl.GeoJSONSource).setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[]}});}}>Clear all</button><button className="primary-small" disabled={routeLoading||route.length<2} onClick={planRoute}>{routeLoading?'Drawing route…':'Draw walking route ↗'}</button></div>
+        <div className="journey-tools"><button onClick={()=>{setRoute([]);setRouteLine([]);setRouteInfo(null);if(mapRef.current&&mapRef.current.getSource('journey-route'))(mapRef.current.getSource('journey-route') as GeoJSONSource).setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[]}});}}>Clear all</button><button className="primary-small" disabled={routeLoading||route.length<2} onClick={planRoute}>{routeLoading?'Drawing route…':'Draw walking route ↗'}</button></div>
         <div className="journey-list">{route.map((id,i)=>{const p=places.find(x=>x.id===id);if(!p)return null;return <article className="stop-row" key={id}><span className="stop-number">{i+1}</span><button className="stop-name" onClick={()=>choose(p)}><b>{p.name}</b><small>{p.area}</small></button><button className="remove-stop" onClick={()=>removeStop(id)} aria-label="Remove stop">×</button></article>})}{route.length===0&&<div className="empty-journey"><span>↗</span><b>Your map, your route.</b><p>Add places from Explore or start with a ready-made itinerary below.</p></div>}</div>
         {routeInfo&&<div className="route-summary"><div><b>{routeInfo.km.toFixed(1)} km</b><small>route distance</small></div><div><b>~{routeInfo.minutes} min</b><small>walking estimate</small></div></div>}
         <div className="suggested-routes"><div className="list-heading">START WITH A ROUTE</div>{starters.map(s=><button className="starter-route" key={s.id} onClick={()=>{setRoute(s.stops);setRouteLine([]);setRouteInfo(null);setNotice(s.title+' loaded. Draw the route to see it on the map.')}}><span className="starter-icon">↗</span><span><b>{s.title}</b><small>{s.tag} · {s.stops.length} stops</small><em>{s.desc}</em></span><span>›</span></button>)}</div>
