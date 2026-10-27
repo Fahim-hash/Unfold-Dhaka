@@ -416,7 +416,7 @@ export default function Home() {
     </aside>
     <div className="map-caption"><span className={styleReady?"caption-dot":"caption-dot caption-dot-loading"}/><b>{styleReady?'GREATER DHAKA · 3D':'PREPARING 3D MAP'}</b><span>Buildings are extruded from available map data</span></div>
     <div className="traffic-hud">
-      <div className="traffic-hud-head"><span className={trafficStatus==='roads-ready'?'traffic-live-dot':'traffic-live-dot pending'}/><b>{trafficStatus==='roads-ready'?'ROAD NETWORK LOADED':trafficStatus==='demo-network'?'DHaka DEMO ROADS':trafficStatus==='offline'?'TRAFFIC DATA OFFLINE':'FETCHING ROAD NETWORK'}</b><small>OSM · FLOW VISUALISATION</small></div>
+      <div className="traffic-hud-head"><span className={trafficStatus==='roads-ready'?'traffic-live-dot':'traffic-live-dot pending'}/><b>{trafficStatus==='roads-ready'?'ROAD NETWORK LOADED':trafficStatus==='demo-network'?'DHAKA DEMO ROADS':trafficStatus==='offline'?'TRAFFIC DATA OFFLINE':'FETCHING ROAD NETWORK'}</b><small>OSM · FLOW VISUALISATION</small></div>
       <div className="traffic-hud-stats"><span><i className="traffic-key car-key"/>210 moving vehicles</span><span><i className="traffic-key bus-key"/>Buses + rickshaws</span></div>
       <button className={'traffic-toggle '+(trafficOn?'is-on':'')} onClick={()=>setTrafficOn(v=>!v)}>{trafficOn?'◉ Traffic animation on':'○ Show traffic'}</button>
       <div className="traffic-disclaimer">{trafficStatus==='roads-ready'?'Road geometry fetched from OSM; vehicle movement is simulated.':trafficStatus==='demo-network'?'Showing built-in Dhaka road corridors; vehicle movement is simulated.':'Actual traffic speeds require a traffic-data API.'}</div>
