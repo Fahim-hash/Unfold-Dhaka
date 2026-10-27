@@ -1,7 +1,7 @@
 'use client';
 
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import type {Map as MapLibreMap, Marker as MapLibreMarker, GeoJSONSource, LngLatBounds as MapLibreLngLatBounds} from 'maplibre-gl';
+import type {Map as MapLibreMap, Marker as MapLibreMarker, GeoJSONSource} from 'maplibre-gl';
 
 type Place = {
   id: number; name: string; bn: string; area: string; kind: string;
@@ -145,7 +145,7 @@ export default function Home() {
       const data=await response.json();
       if(data.code!=='Ok'||!data.routes?.[0])throw new Error('No walkable route found for these stops');
       const r=data.routes[0];setRouteLine(r.geometry.coordinates as [number,number][]);setRouteInfo({km:r.distance/1000,minutes:Math.max(1,Math.round(r.duration/60))});
-      const map=mapRef.current;if(map){const coords=r.geometry.coordinates as [number,number][];const bounds=coords.reduce((b,c)=>b.extend(c),new MapLibreLngLatBounds(coords[0],coords[0]));map.fitBounds(bounds,{padding:{top:100,bottom:100,left:390,right:80},duration:900,maxZoom:16,pitch:58});}
+      const map=mapRef.current;if(map){const maplibre=await import('maplibre-gl');const coords=r.geometry.coordinates as [number,number][];const bounds=coords.reduce((b,c)=>b.extend(c),new maplibre.LngLatBounds(coords[0],coords[0]));map.fitBounds(bounds,{padding:{top:100,bottom:100,left:390,right:80},duration:900,maxZoom:16,pitch:58});}
       setNotice('Walking route drawn on the 3D map. Times are estimates.');
     }catch(e){setNotice(e instanceof Error?e.message:'Could not create route. Try again.');}
     finally{setRouteLoading(false);}
