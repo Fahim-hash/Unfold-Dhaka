@@ -120,7 +120,7 @@ export default function Home() {
   const [placePhoto,setPlacePhoto] = useState<{id:number;url:string;title:string;source:string}|null>(null);
   const [photoLoading,setPhotoLoading] = useState(false);
   const [trafficOn,setTrafficOn] = useState(true);
-  const [trafficStatus,setTrafficStatus] = useState<'loading'|'roads-ready'|'offline'>('loading');
+  const [trafficStatus,setTrafficStatus] = useState<'loading'|'roads-ready'|'demo-network'|'offline'>('loading');
   const filtered = useMemo(()=>places.filter(p=>(panel==='saved'||kind==='All places'||p.kind===kind)&&(panel==='saved'||area==='All Greater Dhaka'||p.area===area)&&(panel!=='saved'||favorites.includes(p.id))&&(p.name+' '+p.bn+' '+p.area+' '+p.kind).toLowerCase().includes(query.toLowerCase())),[query,kind,area,panel,favorites]);
   const choose = useCallback((p:Place,fly=true)=>{
     setSelected(p);
@@ -279,7 +279,44 @@ export default function Home() {
         };
         animate();timer=window.setInterval(animate,120);
       })
-      .catch(error=>{if(alive){console.warn('Traffic road data unavailable',error);setTrafficStatus('offline');}});
+      .catch(error=>{
+        if(!alive)return;
+        console.warn('Live OSM road query unavailable; using built-in Dhaka demo roads.',error);
+        // Reliable fallback: major central-Dhaka road corridors, used only when Overpass is unavailable.
+        roads=[
+          {kind:'primary',coordinates:[[90.388,23.719],[90.391,23.726],[90.394,23.733],[90.397,23.740],[90.400,23.747],[90.404,23.754],[90.408,23.761],[90.414,23.770]] as [number,number][]},
+          {kind:'primary',coordinates:[[90.378,23.762],[90.385,23.760],[90.392,23.757],[90.400,23.755],[90.408,23.753],[90.416,23.751],[90.424,23.750]] as [number,number][]},
+          {kind:'primary',coordinates:[[90.376,23.746],[90.384,23.746],[90.392,23.747],[90.400,23.747],[90.408,23.746],[90.416,23.745]] as [number,number][]},
+          {kind:'secondary',coordinates:[[90.393,23.727],[90.396,23.734],[90.399,23.741],[90.402,23.748],[90.405,23.755],[90.408,23.762]] as [number,number][]},
+          {kind:'secondary',coordinates:[[90.386,23.708],[90.389,23.717],[90.392,23.726],[90.395,23.735],[90.398,23.744]] as [number,number][]},
+          {kind:'secondary',coordinates:[[90.406,23.708],[90.404,23.718],[90.402,23.728],[90.400,23.738],[90.398,23.748]] as [number,number][]},
+          {kind:'secondary',coordinates:[[90.370,23.735],[90.379,23.737],[90.388,23.739],[90.397,23.740],[90.406,23.741],[90.415,23.743]] as [number,number][]},
+          {kind:'secondary',coordinates:[[90.405,23.733],[90.412,23.738],[90.418,23.744],[90.423,23.751],[90.426,23.760]] as [number,number][]},
+          {kind:'tertiary',coordinates:[[90.382,23.755],[90.389,23.752],[90.396,23.750],[90.403,23.748],[90.411,23.747]] as [number,number][]},
+          {kind:'tertiary',coordinates:[[90.389,23.765],[90.391,23.757],[90.393,23.749],[90.395,23.741],[90.397,23.733]] as [number,number][]},
+          {kind:'tertiary',coordinates:[[90.411,23.761],[90.405,23.765],[90.399,23.769],[90.393,23.773],[90.387,23.777]] as [number,number][]},
+          {kind:'tertiary',coordinates:[[90.378,23.728],[90.386,23.731],[90.394,23.733],[90.402,23.735],[90.410,23.738]] as [number,number][]},
+          {kind:'tertiary',coordinates:[[90.399,23.720],[90.402,23.728],[90.405,23.736],[90.408,23.744],[90.411,23.752]] as [number,number][]},
+          {kind:'tertiary',coordinates:[[90.385,23.744],[90.390,23.748],[90.395,23.752],[90.400,23.756],[90.405,23.760]] as [number,number][]},
+          {kind:'tertiary',coordinates:[[90.414,23.735],[90.411,23.742],[90.408,23.749],[90.405,23.756],[90.402,23.763]] as [number,number][]}
+        ];
+        roadSource()?.setData({type:'FeatureCollection',features:roads.map((r,i)=>({type:'Feature' as const,id:i,properties:{flow:i%4===0?'heavy':i%2===0?'busy':'moving',kind:r.kind},geometry:{type:'LineString' as const,coordinates:r.coordinates}}))});
+        let seed=93025;const rand=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
+        vehicles=Array.from({length:160},(_,i)=>({road:Math.floor(rand()*roads.length),progress:rand(),speed:0.00014+rand()*0.0005,kind:i%12===0?'BUS':i%8===0?'RICKSHAW':'CAR'}));
+        setTrafficStatus('demo-network');
+        const animate=()=>{
+          if(!alive)return;
+          const features=vehicles.flatMap((v,i)=>{
+            const road=roads[v.road];if(!road||road.coordinates.length<2)return [];
+            v.progress+=v.speed*(v.kind==='BUS'?0.72:1);if(v.progress>=1)v.progress-=1;
+            const scaled=v.progress*(road.coordinates.length-1),index=Math.min(road.coordinates.length-2,Math.floor(scaled)),t=scaled-index;
+            const a=road.coordinates[index],b=road.coordinates[index+1];
+            return [{type:'Feature' as const,id:i,properties:{kind:v.kind},geometry:{type:'Point' as const,coordinates:[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]}}];
+          });
+          vehicleSource()?.setData({type:'FeatureCollection',features});
+        };
+        animate();timer=window.setInterval(animate,120);
+      });
     return ()=>{alive=false;if(timer)window.clearInterval(timer);};
   },[mapReady]);
   useEffect(()=>{
@@ -379,10 +416,10 @@ export default function Home() {
     </aside>
     <div className="map-caption"><span className={styleReady?"caption-dot":"caption-dot caption-dot-loading"}/><b>{styleReady?'GREATER DHAKA · 3D':'PREPARING 3D MAP'}</b><span>Buildings are extruded from available map data</span></div>
     <div className="traffic-hud">
-      <div className="traffic-hud-head"><span className={trafficStatus==='roads-ready'?'traffic-live-dot':'traffic-live-dot pending'}/><b>{trafficStatus==='roads-ready'?'ROAD NETWORK LOADED':trafficStatus==='offline'?'TRAFFIC DATA OFFLINE':'FETCHING ROAD NETWORK'}</b><small>OSM · FLOW VISUALISATION</small></div>
+      <div className="traffic-hud-head"><span className={trafficStatus==='roads-ready'?'traffic-live-dot':'traffic-live-dot pending'}/><b>{trafficStatus==='roads-ready'?'ROAD NETWORK LOADED':trafficStatus==='demo-network'?'DHaka DEMO ROADS':trafficStatus==='offline'?'TRAFFIC DATA OFFLINE':'FETCHING ROAD NETWORK'}</b><small>OSM · FLOW VISUALISATION</small></div>
       <div className="traffic-hud-stats"><span><i className="traffic-key car-key"/>210 moving vehicles</span><span><i className="traffic-key bus-key"/>Buses + rickshaws</span></div>
       <button className={'traffic-toggle '+(trafficOn?'is-on':'')} onClick={()=>setTrafficOn(v=>!v)}>{trafficOn?'◉ Traffic animation on':'○ Show traffic'}</button>
-      <div className="traffic-disclaimer">{trafficStatus==='roads-ready'?'Road geometry fetched live; vehicle movement is simulated.':'Actual traffic speeds require a traffic-data API.'}</div>
+      <div className="traffic-disclaimer">{trafficStatus==='roads-ready'?'Road geometry fetched from OSM; vehicle movement is simulated.':trafficStatus==='demo-network'?'Showing built-in Dhaka road corridors; vehicle movement is simulated.':'Actual traffic speeds require a traffic-data API.'}</div>
     </div>
     {selected&&<section className="place-card" aria-label="Selected place"><button className="card-close" onClick={()=>setSelected(null)} aria-label="Close place details">×</button><div className="card-kicker">{selected.kind.toUpperCase()} <span>·</span> {selected.area.toUpperCase()}</div><h2>{bn?selected.bn:selected.name}</h2>{placePhoto?.id===selected.id&&<figure className="place-photo"><img src={placePhoto.url} alt={selected.name+' — photo from Wikimedia Commons'} loading="lazy"/><figcaption><span>{placePhoto.title}</span><a href={placePhoto.source} target="_blank" rel="noreferrer">Photo source ↗</a></figcaption></figure>}{photoLoading&&<div className="photo-loading" aria-live="polite">Finding a photo of this place…</div>}<p>{selected.desc}</p>{(selected.id===8||selected.id===40)&&<div className="landmark-facts">
           <div className="landmark-facts-head">LANDMARK NOTES <span>✳</span></div>
