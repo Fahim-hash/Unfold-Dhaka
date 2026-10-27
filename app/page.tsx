@@ -134,11 +134,25 @@ export default function Home() {
             }
           },labelLayer?.id);
         }
+        if(!map.getLayer('unfold-famous-buildings')){
+          const famousNames=['Lalbagh Fort','Lalbagh Kella','Ahsan Manzil','Pink Palace','Jatiya Sangsad Bhaban','National Parliament House','Bangladesh National Parliament','Curzon Hall','Baitul Mukarram','Baitul Mukarram National Mosque','Bashundhara City','Jamuna Future Park','National Martyrs Memorial','Suhrawardy Udyan'];
+          map.addLayer({
+            id:'unfold-famous-buildings',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:12.5,
+            filter:['any',['in',['get','name'],['literal',famousNames]],['in',['get','name:en'],['literal',famousNames]]],
+            paint:{
+              'fill-extrusion-color':['match',['coalesce',['get','name'],['get','name:en']],'Lalbagh Fort','#c98b53','Ahsan Manzil','#e7a0a0','Pink Palace','#e7a0a0','Jatiya Sangsad Bhaban','#b6c6bb','National Parliament House','#b6c6bb','Bangladesh National Parliament','#b6c6bb','Curzon Hall','#caa978','Baitul Mukarram','#d9d2b9','Baitul Mukarram National Mosque','#d9d2b9','Bashundhara City','#91b9b0','Jamuna Future Park','#91b9b0','#d6b77e'],
+              'fill-extrusion-height':['interpolate',['linear'],['zoom'],12.5,['coalesce',['get','render_height'],['get','height'],16],15,['coalesce',['get','render_height'],['get','height'],16]],
+              'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],
+              'fill-extrusion-opacity':1
+            }
+          },labelLayer?.id);
+        }
         if(!map.getSource('unfold-places')){
           map.addSource('unfold-places',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
           map.addLayer({id:'unfold-place-halo',type:'circle',source:'unfold-places',paint:{'circle-radius':15,'circle-color':'#f7f4e8','circle-opacity':0.96,'circle-stroke-color':'#164b3b','circle-stroke-width':2}});
           map.addLayer({id:'unfold-place-dots',type:'circle',source:'unfold-places',paint:{'circle-radius':8,'circle-color':'#164b3b','circle-stroke-color':'#fffef7','circle-stroke-width':1.5}});
-          map.addLayer({id:'unfold-place-labels',type:'symbol',source:'unfold-places',layout:{'text-field':['get','icon'],'text-font':['Noto Sans Regular'],'text-size':12,'text-allow-overlap':true,'text-ignore-placement':true},paint:{'text-color':'#fffef7','text-halo-color':'#164b3b','text-halo-width':0.5}});
+          map.addLayer({id:'unfold-place-labels',type:'symbol',source:'unfold-places',layout:{'text-field':['get','icon'],'text-font':['Open Sans Regular'],'text-size':12,'text-allow-overlap':true,'text-ignore-placement':true},paint:{'text-color':'#fffef7','text-halo-color':'#164b3b','text-halo-width':0.5}});
+          map.addLayer({id:'unfold-place-hover-name',type:'symbol',source:'unfold-places',layout:{'text-field':['case',['boolean',['feature-state','hover'],false],['get','name'],''],'text-font':['Open Sans Semibold'],'text-size':13,'text-offset':[0,1.8],'text-anchor':'top','text-max-width':22,'text-allow-overlap':true,'text-ignore-placement':true},paint:{'text-color':'#173e31','text-halo-color':'#fffef7','text-halo-width':2.5}});
         }
         const openPlace=(event: {features?: Array<{properties?:Record<string,unknown>}>})=>{
           const id=Number(event.features?.[0]?.properties?.id);
@@ -146,9 +160,14 @@ export default function Home() {
         };
         map.on('click','unfold-place-dots',openPlace);
         map.on('click','unfold-place-labels',openPlace);
-        for(const layer of ['unfold-place-dots','unfold-place-labels']){
-          map.on('mouseenter',layer,()=>{map.getCanvas().style.cursor='pointer';});
-          map.on('mouseleave',layer,()=>{map.getCanvas().style.cursor='';});
+        const setHover=(event:{features?:Array<{id?:string|number}>},hover:boolean)=>{
+          const id=event.features?.[0]?.id;
+          if(id!==undefined)map.setFeatureState({source:'unfold-places',id}, {hover});
+        };
+        for(const layer of ['unfold-place-dots','unfold-place-labels','unfold-place-halo']){
+          map.on('mouseenter',layer,(event)=>{map.getCanvas().style.cursor='pointer';setHover(event as {features?:Array<{id?:string|number}>},true);});
+          map.on('mousemove',layer,(event)=>setHover(event as {features?:Array<{id?:string|number}>},true));
+          map.on('mouseleave',layer,(event)=>{map.getCanvas().style.cursor='';setHover(event as {features?:Array<{id?:string|number}>},false);});
         }
         setStyleReady(true);setMapReady(true);
       });
@@ -161,7 +180,7 @@ export default function Home() {
     const map=mapRef.current;if(!map||!mapReady)return;
     const source=map.getSource('unfold-places') as GeoJSONSource|undefined;
     if(!source)return;
-    source.setData({type:'FeatureCollection',features:filtered.map(p=>({type:'Feature' as const,properties:{id:p.id,name:p.name,icon:p.icon},geometry:{type:'Point' as const,coordinates:[p.lng,p.lat]}}))});
+    source.setData({type:'FeatureCollection',features:filtered.map(p=>({type:'Feature' as const,id:p.id,properties:{id:p.id,name:p.name,icon:p.icon},geometry:{type:'Point' as const,coordinates:[p.lng,p.lat]}}))});
   },[filtered,mapReady]);
   useEffect(()=>{
     const map=mapRef.current;if(!map||!mapReady)return;
