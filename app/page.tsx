@@ -219,6 +219,38 @@ export default function Home() {
           map.on('mousemove',layer,(event)=>setHover(event as {features?:Array<{id?:string|number}>},true));
           map.on('mouseleave',layer,(event)=>{map.getCanvas().style.cursor='';setHover(event as {features?:Array<{id?:string|number}>},false);});
         }
+        // Draw compact top-down vehicle silhouettes into the MapLibre sprite atlas.
+        const drawVehicle=(id:string,kind:'car'|'bus'|'rickshaw',body:string)=>{
+          if(map.hasImage(id))return;
+          const canvas=document.createElement('canvas');canvas.width=64;canvas.height=96;
+          const ctx=canvas.getContext('2d');if(!ctx)return;
+          ctx.translate(32,48);
+          const rr=(x:number,y:number,w:number,h:number,r:number)=>{ctx.beginPath();ctx.roundRect(x,y,w,h,r);};
+          ctx.fillStyle='#142c25';
+          if(kind==='bus'){
+            rr(-19,-39,38,78,8);ctx.fill();
+            ctx.fillStyle=body;rr(-15,-34,30,68,5);ctx.fill();
+            ctx.fillStyle='#b9d6d2';rr(-12,-28,24,18,3);ctx.fill();rr(-12,-5,24,23,3);ctx.fill();
+            ctx.fillStyle='#f5d7a0';ctx.fillRect(-11,31,7,3);ctx.fillRect(4,31,7,3);
+          }else if(kind==='rickshaw'){
+            ctx.fillStyle='#142c25';rr(-17,-27,34,52,7);ctx.fill();
+            ctx.fillStyle=body;rr(-13,-23,26,43,6);ctx.fill();
+            ctx.fillStyle='#f4d7a0';ctx.beginPath();ctx.moveTo(-13,-18);ctx.lineTo(0,-34);ctx.lineTo(13,-18);ctx.closePath();ctx.fill();
+            ctx.fillStyle='#b9d6d2';rr(-9,-14,18,13,3);ctx.fill();
+            ctx.fillStyle='#142c25';ctx.beginPath();ctx.arc(0,30,7,0,Math.PI*2);ctx.fill();
+          }else{
+            ctx.fillStyle='#142c25';rr(-18,-31,36,62,10);ctx.fill();
+            ctx.fillStyle=body;rr(-14,-27,28,54,8);ctx.fill();
+            ctx.fillStyle='#b9d6d2';rr(-10,-20,20,13,4);ctx.fill();rr(-10,7,20,12,4);ctx.fill();
+            ctx.fillStyle='#f5d7a0';ctx.fillRect(-11,-27,6,3);ctx.fillRect(5,-27,6,3);ctx.fillRect(-11,24,6,3);ctx.fillRect(5,24,6,3);
+          }
+          ctx.fillStyle='#101d19';
+          for(const y of [-23,17]){ctx.fillRect(-21,y,5,13);ctx.fillRect(16,y,5,13);}
+          map.addImage(id,canvas,{pixelRatio:2});
+        };
+        drawVehicle('unfold-vehicle-car','car','#e8efe0');
+        drawVehicle('unfold-vehicle-bus','bus','#e7a34f');
+        drawVehicle('unfold-vehicle-rickshaw','rickshaw','#42b99b');
         setStyleReady(true);setMapReady(true);
       });
       map.on('error',e=>{if(e.error) console.warn('Map tile/style issue',e.error.message);});
@@ -242,10 +274,10 @@ export default function Home() {
       }},map.getLayer('unfold-3d-buildings')?'unfold-3d-buildings':undefined);
       map.addSource('unfold-traffic-vehicles',{type:'geojson',data:empty});
       map.addLayer({id:'unfold-traffic-vehicles',type:'symbol',source:'unfold-traffic-vehicles',layout:{
-        'text-field':['match',['get','kind'],'BUS','🚌','RICKSHAW','🛺','CAR','🚗','🚙'],
-        'text-size':['interpolate',['linear'],['zoom'],10,10,13,15,16,19,18,23],
-        'text-allow-overlap':true,'text-ignore-placement':true
-      },paint:{'text-halo-color':'#17352e','text-halo-width':1.8}});
+        'icon-image':['match',['get','kind'],'BUS','unfold-vehicle-bus','RICKSHAW','unfold-vehicle-rickshaw','CAR','unfold-vehicle-car','unfold-vehicle-car'],
+        'icon-size':['interpolate',['linear'],['zoom'],10,0.28,13,0.42,16,0.58,18,0.72],
+        'icon-allow-overlap':true,'icon-ignore-placement':true,'icon-rotation-alignment':'map','icon-pitch-alignment':'map'
+      },paint:{'icon-opacity':0.98}});
     }
     const roadSource=()=>map.getSource('unfold-traffic-roads') as GeoJSONSource|undefined;
     const vehicleSource=()=>map.getSource('unfold-traffic-vehicles') as GeoJSONSource|undefined;
