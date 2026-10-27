@@ -82,6 +82,8 @@ export default function Home() {
   const [locating,setLocating] = useState(false);
   const [notice,setNotice] = useState('');
   const [styleReady,setStyleReady] = useState(false);
+  const [placePhoto,setPlacePhoto] = useState<{id:number;url:string;title:string;source:string}|null>(null);
+  const [photoLoading,setPhotoLoading] = useState(false);
   const filtered = useMemo(()=>places.filter(p=>(panel==='saved'||kind==='All places'||p.kind===kind)&&(panel==='saved'||area==='All Greater Dhaka'||p.area===area)&&(panel!=='saved'||favorites.includes(p.id))&&(p.name+' '+p.bn+' '+p.area+' '+p.kind).toLowerCase().includes(query.toLowerCase())),[query,kind,area,panel,favorites]);
   const choose = useCallback((p:Place,fly=true)=>{
     setSelected(p);
@@ -177,6 +179,28 @@ export default function Home() {
     return ()=>{cancelled=true;mapRef.current?.remove();mapRef.current=null;};
   },[]);
   useEffect(()=>{
+    if(!selected){setPlacePhoto(null);setPhotoLoading(false);return;}
+    const controller=new AbortController();
+    setPlacePhoto(null);setPhotoLoading(true);
+    const searchTerms=[selected.name+' Dhaka Bangladesh',selected.name+' Bangladesh'];
+    void (async()=>{
+      try{
+        for(const term of searchTerms){
+          const params=new URLSearchParams({action:'query',generator:'search',gsrsearch:'filetype:bitmap '+term,gsrnamespace:'6',gsrlimit:'8',prop:'imageinfo',iiprop:'url',iiurlwidth:'1000',format:'json',origin:'*'});
+          const response=await fetch('https://commons.wikimedia.org/w/api.php?'+params.toString(),{signal:controller.signal});
+          if(!response.ok)continue;
+          const data=await response.json();
+          const pages=Object.values(data.query?.pages||[]) as Array<{title?:string;imageinfo?:Array<{thumburl?:string;url?:string;descriptionurl?:string}>}>;
+          const match=pages.find(page=>page.imageinfo?.[0]?.thumburl||page.imageinfo?.[0]?.url);
+          const info=match?.imageinfo?.[0];
+          if(info){setPlacePhoto({id:selected.id,url:info.thumburl||info.url||'',title:(match?.title||'').replace(/^File:/,''),source:info.descriptionurl||'https://commons.wikimedia.org/'});return;}
+        }
+      }catch(error){if(!(error instanceof DOMException&&error.name==='AbortError'))console.warn('Could not load landmark photo',error);}
+      finally{if(!controller.signal.aborted)setPhotoLoading(false);}
+    })();
+    return ()=>controller.abort();
+  },[selected]);
+  useEffect(()=>{
     const map=mapRef.current;if(!map||!mapReady)return;
     const source=map.getSource('unfold-places') as GeoJSONSource|undefined;
     if(!source)return;
@@ -246,7 +270,7 @@ export default function Home() {
       </>:<><div className="panel-intro compact"><div className="kicker">YOUR PERSONAL SHORTLIST</div><h2>Saved places</h2><p>Favourites stay on this device. No account needed.</p></div><div className="places-list saved-list">{filtered.map(p=><article key={p.id} className={'place-row '+(selected?.id===p.id?'selected':'')}><button className="place-main" onClick={()=>choose(p)}><span className="place-symbol">{p.icon}</span><span className="place-text"><b>{p.name}</b><small>{p.area} · {p.kind}</small></span><span className="row-arrow">↗</span></button><button className="save-mini is-saved" onClick={()=>toggleFavorite(p)} aria-label="Remove saved place">★</button></article>)}{!filtered.length&&<div className="no-results">Save a place with the ☆ button and it will appear here.</div>}</div></>}
     </aside>
     <div className="map-caption"><span className={styleReady?"caption-dot":"caption-dot caption-dot-loading"}/><b>{styleReady?'GREATER DHAKA · 3D':'PREPARING 3D MAP'}</b><span>Buildings are extruded from available map data</span></div>
-    {selected&&<section className="place-card" aria-label="Selected place"><button className="card-close" onClick={()=>setSelected(null)} aria-label="Close place details">×</button><div className="card-kicker">{selected.kind.toUpperCase()} <span>·</span> {selected.area.toUpperCase()}</div><h2>{bn?selected.bn:selected.name}</h2><p>{selected.desc}</p><div className="place-meta"><span>⌖ {selected.lat.toFixed(4)}° N, {selected.lng.toFixed(4)}° E</span><span>Hours not verified</span></div><div className="card-actions"><button className="add-stop" onClick={()=>addStop(selected)}>{route.includes(selected.id)?'✓ In your journey':'＋ Add stop'}</button><button className={'favorite-action '+(favorites.includes(selected.id)?'is-saved':'')} onClick={()=>toggleFavorite(selected)}>{favorites.includes(selected.id)?'★ Saved':'☆ Save'}</button><button className="fly-action" onClick={()=>choose(selected)}>Fly to ↗</button></div></section>}
+    {selected&&<section className="place-card" aria-label="Selected place"><button className="card-close" onClick={()=>setSelected(null)} aria-label="Close place details">×</button><div className="card-kicker">{selected.kind.toUpperCase()} <span>·</span> {selected.area.toUpperCase()}</div><h2>{bn?selected.bn:selected.name}</h2>{placePhoto?.id===selected.id&&<figure className="place-photo"><img src={placePhoto.url} alt={selected.name+' — photo from Wikimedia Commons'} loading="lazy"/><figcaption><span>{placePhoto.title}</span><a href={placePhoto.source} target="_blank" rel="noreferrer">Photo source ↗</a></figcaption></figure>}{photoLoading&&<div className="photo-loading" aria-live="polite">Finding a photo of this place…</div>}<p>{selected.desc}</p><div className="place-meta"><span>⌖ {selected.lat.toFixed(4)}° N, {selected.lng.toFixed(4)}° E</span><span>Hours not verified</span></div><div className="card-actions"><button className="add-stop" onClick={()=>addStop(selected)}>{route.includes(selected.id)?'✓ In your journey':'＋ Add stop'}</button><button className={'favorite-action '+(favorites.includes(selected.id)?'is-saved':'')} onClick={()=>toggleFavorite(selected)}>{favorites.includes(selected.id)?'★ Saved':'☆ Save'}</button><button className="fly-action" onClick={()=>choose(selected)}>Fly to ↗</button></div></section>}
     {notice&&<div className="notice" role="status"><span>{notice}</span><button onClick={()=>setNotice('')}>×</button></div>}
     <button className="mobile-map-menu" onClick={()=>setMobilePanel(true)}>☰ Places & routes</button>
     <div className="map-credit">Map data © OpenStreetMap contributors · 3D tiles © OpenFreeMap</div>
