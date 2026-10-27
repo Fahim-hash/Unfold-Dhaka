@@ -83,7 +83,7 @@ export default function Home() {
   const [locating,setLocating] = useState(false);
   const [notice,setNotice] = useState('');
   const [styleReady,setStyleReady] = useState(false);
-  const filtered = useMemo(()=>places.filter(p=>(kind==='All places'||p.kind===kind)&&(area==='All Greater Dhaka'||p.area===area)&&(panel!=='saved'||favorites.includes(p.id))&&(p.name+' '+p.bn+' '+p.area+' '+p.kind).toLowerCase().includes(query.toLowerCase())),[query,kind,area,panel,favorites]);
+  const filtered = useMemo(()=>places.filter(p=>(panel==='saved'||kind==='All places'||p.kind===kind)&&(panel==='saved'||area==='All Greater Dhaka'||p.area===area)&&(panel!=='saved'||favorites.includes(p.id))&&(p.name+' '+p.bn+' '+p.area+' '+p.kind).toLowerCase().includes(query.toLowerCase())),[query,kind,area,panel,favorites]);
   const choose = useCallback((p:Place,fly=true)=>{
     setSelected(p);
     if(fly&&mapRef.current) mapRef.current.flyTo({center:[p.lng,p.lat],zoom:16,pitch:65,bearing:-15,duration:1100});
@@ -202,6 +202,7 @@ export default function Home() {
       <label className="map-search"><span>⌕</span><input ref={searchInputRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder={bn?'জায়গা খুঁজুন…':'Search places, neighbourhoods…'} aria-label="Search places"/>{query&&<button onClick={()=>setQuery('')} aria-label="Clear search">×</button>}<kbd>⌘ K</kbd></label>
       <div className="top-actions"><button className="language" onClick={()=>setBn(!bn)}>{bn?'EN':'বাংলা'}</button><button className="location-button" onClick={useMyLocation}>{locating?'Locating…':'◎ Near me'}</button></div>
     </header>
+    {mobilePanel&&<button className="panel-backdrop" aria-label="Close places panel" onClick={()=>setMobilePanel(false)}/>}
     <aside className={'map-panel '+(mobilePanel?'panel-open':'')}>
       <div className="panel-tabs"><button className={panel==='explore'?'active':''} onClick={()=>setPanel('explore')}>Explore</button><button className={panel==='journey'?'active':''} onClick={()=>setPanel('journey')}>My journey <span>{route.length}</span></button><button className={panel==='saved'?'active':''} onClick={()=>setPanel('saved')}>Saved <span>{favorites.length}</span></button><button className="panel-close" onClick={()=>setMobilePanel(false)}>×</button></div>
       {panel==='explore'?<><div className="panel-intro"><div className="kicker">THE CITY, YOURS TO DISCOVER</div><h1>{bn?'ঢাকা, নতুন চোখে।':<>Find your<br/><em>own Dhaka.</em></>}</h1><p>{bn?'পুরান ঢাকার অলিগলি থেকে উত্তরের নতুন শহর—৩ডি মানচিত্রে ঘুরে দেখুন।':'Orbit the real city, discover landmarks and build a day that feels like yours.'}</p></div>
