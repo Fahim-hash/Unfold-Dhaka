@@ -79,7 +79,7 @@ export default function Home() {
         container:mapContainer.current,
         style:'https://tiles.openfreemap.org/styles/liberty',
         center:[90.405,23.752],zoom:13,pitch:62,bearing:-18,
-        antialias:true, maxPitch:78, minZoom:9, maxZoom:20,
+        canvasContextAttributes:{antialias:true}, maxPitch:78, minZoom:9, maxZoom:20,
       });
       mapRef.current=map;
       map.addControl(new mod.NavigationControl({showCompass:true,visualizePitch:true}), 'bottom-right');
