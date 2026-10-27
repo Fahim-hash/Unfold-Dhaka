@@ -239,7 +239,7 @@ export default function Home() {
       map.addLayer({id:'unfold-traffic-roads',type:'line',source:'unfold-traffic-roads',layout:{'line-cap':'round','line-join':'round'},paint:{
         'line-color':['match',['get','flow'],'heavy','#ed665a','busy','#f3b75f','#48b9a0'],
         'line-width':['interpolate',['linear'],['zoom'],10,1.1,14,3.2,17,5.5],'line-opacity':0.78
-      }});
+      }},map.getLayer('unfold-3d-buildings')?'unfold-3d-buildings':undefined);
       map.addSource('unfold-traffic-vehicles',{type:'geojson',data:empty});
       map.addLayer({id:'unfold-traffic-vehicles',type:'symbol',source:'unfold-traffic-vehicles',layout:{
         'text-field':['match',['get','kind'],'BUS','▰','RICKSHAW','◆','●'],
