@@ -12,6 +12,7 @@ const places: Place[] = [
   {id:2,name:'Ahsan Manzil',bn:'আহসান মঞ্জিল',area:'Old Dhaka',kind:'Heritage',lat:23.7089,lng:90.4062,desc:'The pink palace beside the Buriganga, layered with stories of old Dhaka.',icon:'◇'},
   {id:3,name:'Sadarghat Riverfront',bn:'সদরঘাট',area:'Old Dhaka',kind:'Riverside',lat:23.7064,lng:90.4071,desc:'A lively river terminal on the Buriganga. Expect crowds and changing conditions.',icon:'≈'},
   {id:4,name:'Star Mosque',bn:'তারা মসজিদ',area:'Old Dhaka',kind:'Culture',lat:23.7104,lng:90.4025,desc:'A distinctive mosque known for decorative star motifs and tilework.',icon:'✳'},
+  {id:40,name:'Central Shaheed Minar',bn:'কেন্দ্রীয় শহীদ মিনার',area:'University Area',kind:'Heritage',lat:23.7276,lng:90.3967,desc:'A national monument commemorating the language martyrs of the 1952 Bengali Language Movement, designed by Hamidur Rahman.',icon:'✦'},
   {id:5,name:'National Museum',bn:'জাতীয় জাদুঘর',area:'Shahbagh',kind:'Culture',lat:23.7389,lng:90.3948,desc:'Collections spanning archaeology, history, art and cultural heritage.',icon:'▤'},
   {id:6,name:'Ramna Park',bn:'রমনা পার্ক',area:'Ramna',kind:'Parks',lat:23.7382,lng:90.3995,desc:'A green public park near central Dhaka, popular for walks and quiet breaks.',icon:'♧'},
   {id:7,name:'Hatirjheel',bn:'হাতিরঝিল',area:'Central Dhaka',kind:'Outdoors',lat:23.7621,lng:90.4074,desc:'An urban lake and waterfront network with bridges and city views.',icon:'≈'},
@@ -55,6 +56,40 @@ const starters = [
   {id:'green-dhaka',title:'Green breaks',tag:'PARKS + LAKES',desc:'A slower day around parks and waterside spaces.',stops:[6,9,7,10]},
   {id:'city-forms',title:'Architecture trail',tag:'DESIGN + CULTURE',desc:'Explore landmark architecture across central Dhaka.',stops:[12,5,8,13]}
 ];
+type LandmarkFeature = {type:'Feature';properties:{name:string;height:number;base:number;color:string;part:string};geometry:{type:'Polygon';coordinates:number[][][]}};
+function landmarkBox(lng:number,lat:number,width:number,depth:number,height:number,name:string,color:string,angle=0,base=0,part='structure'):LandmarkFeature {
+  const dx=width/2,dy=depth/2,a=angle*Math.PI/180;
+  const corners=[[-dx,-dy],[dx,-dy],[dx,dy],[-dx,dy],[-dx,-dy]].map(([x,y])=>{
+    const east=x*Math.cos(a)-y*Math.sin(a),north=x*Math.sin(a)+y*Math.cos(a);
+    return [lng+east/(111320*Math.cos(lat*Math.PI/180)),lat+north/110540];
+  });
+  return {type:'Feature',properties:{name,height,base,color,part},geometry:{type:'Polygon',coordinates:[corners]}};
+}
+function landmarkOctagon(lng:number,lat:number,radius:number,height:number,name:string,color:string,base=0,part='structure'):LandmarkFeature {
+  const ring:number[][]=[];
+  for(let i=0;i<=8;i++){const a=(Math.PI/8)+(i%8)*Math.PI/4;ring.push([lng+Math.cos(a)*radius/(111320*Math.cos(lat*Math.PI/180)),lat+Math.sin(a)*radius/110540]);}
+  return {type:'Feature',properties:{name,height,base,color,part},geometry:{type:'Polygon',coordinates:[ring]}};
+}
+const landmarkModels:LandmarkFeature[] = (() => {
+  const out:LandmarkFeature[]=[];
+  const mlng=90.3967,mlat=23.7276,m='Central Shaheed Minar';
+  out.push(landmarkBox(mlng,mlat,22,17,0.8,m,'#d8c8b2',0,0,'plaza'));
+  out.push(landmarkBox(mlng,mlat,9,2.2,11,m,'#eee5d5',-8,0.8,'central pillar'));
+  out.push(landmarkBox(mlng-0.000045,mlat+0.000035,2.1,2.1,14,m,'#f4eee1',-7,0.8,'tall pillar'));
+  out.push(landmarkBox(mlng+0.000045,mlat+0.000035,2.1,2.1,14,m,'#f4eee1',7,0.8,'tall pillar'));
+  out.push(landmarkBox(mlng-0.000105,mlat+0.000005,2,2,8.5,m,'#e6d8c5',-10,0.8,'side pillar'));
+  out.push(landmarkBox(mlng+0.000105,mlat+0.000005,2,2,8.5,m,'#e6d8c5',10,0.8,'side pillar'));
+  out.push(landmarkBox(mlng,mlat-0.000035,2,2,6,m,'#e6d8c5',0,0.8,'front pillar'));
+  const slng=90.37844,slat=23.76247,n='Jatiya Sangsad Bhaban';
+  out.push(landmarkOctagon(slng,slat,78,2.5,n,'#8caaa4',0,'complex platform'));
+  out.push(landmarkOctagon(slng,slat,53,13,n,'#c4c8b7',2.5,'outer assembly mass'));
+  out.push(landmarkOctagon(slng,slat,38,20,n,'#e1dfcf',13,'central mass'));
+  out.push(landmarkOctagon(slng,slat,24,27,n,'#b7c8c1',20,'assembly core'));
+  out.push(landmarkBox(slng,slat,35,12,10,n,'#d6d3c3',0,2.5,'south wing'));
+  out.push(landmarkBox(slng-0.00017,slat+0.00007,12,24,9,n,'#b8c8bd',15,2.5,'east wing'));
+  out.push(landmarkBox(slng+0.00017,slat+0.00007,12,24,9,n,'#b8c8bd',-15,2.5,'west wing'));
+  return out;
+})();
 function distanceKm(a:{lat:number;lng:number},b:{lat:number;lng:number}) {
   const rad=(v:number)=>v*Math.PI/180, dLat=rad(b.lat-a.lat), dLng=rad(b.lng-a.lng);
   const x=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLng/2)**2;
@@ -148,6 +183,17 @@ export default function Home() {
               'fill-extrusion-opacity':1
             }
           },labelLayer?.id);
+        }
+        if(!map.getSource('unfold-landmark-models')){
+          map.addSource('unfold-landmark-models',{type:'geojson',data:{type:'FeatureCollection',features:landmarkModels}});
+          map.addLayer({id:'unfold-landmark-3d',type:'fill-extrusion',source:'unfold-landmark-models',minzoom:14,
+            paint:{
+              'fill-extrusion-color':['get','color'],
+              'fill-extrusion-height':['get','height'],
+              'fill-extrusion-base':['get','base'],
+              'fill-extrusion-opacity':1,
+              'fill-extrusion-vertical-gradient':true
+            }},labelLayer?.id);
         }
         if(!map.getSource('unfold-places')){
           map.addSource('unfold-places',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
