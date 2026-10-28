@@ -498,6 +498,7 @@ export default function Home() {
         </div>}<div className="place-meta"><span>⌖ {selected.lat.toFixed(4)}° N, {selected.lng.toFixed(4)}° E</span><span>Hours not verified</span></div><div className="card-actions"><button className="add-stop" onClick={()=>addStop(selected)}>{route.includes(selected.id)?'✓ In your journey':'＋ Add stop'}</button><button className={'favorite-action '+(favorites.includes(selected.id)?'is-saved':'')} onClick={()=>toggleFavorite(selected)}>{favorites.includes(selected.id)?'★ Saved':'☆ Save'}</button><button className="fly-action" onClick={()=>choose(selected)}>Fly to ↗</button></div></section>}
     {notice&&<div className="notice" role="status"><span>{notice}</span><button onClick={()=>setNotice('')}>×</button></div>}
     <button className="mobile-map-menu" onClick={()=>setMobilePanel(true)}>☰ Places & routes</button>
+    {cinematicMode&&<button className="cinema-exit" onClick={()=>setCinematicMode(false)}><span>◈</span> Exit cinematic view <kbd>Esc</kbd></button>}
     <div className="map-credit">Map data © OpenStreetMap contributors · 3D tiles © OpenFreeMap</div>
   </main>;
 }
