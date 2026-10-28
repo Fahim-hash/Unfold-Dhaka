@@ -169,7 +169,7 @@ export default function Home() {
             filter:['!=',['get','hide_3d'],'true'],
             paint:{
               'fill-extrusion-color':['match',['%', ['to-number',['id'],0], 11],0,'#c9b18a',1,'#9ebbb0',2,'#b9a9c7',3,'#d3a58d',4,'#a5b6bd',5,'#c9c5a1',6,'#b7a1a6',7,'#8eaa91',8,'#c7b49c',9,'#a9a58d',10,'#90a9b4','#c9b18a'],
-              'fill-extrusion-height':['interpolate',['linear'],['zoom'],12.2,0,14.5,['coalesce',['get','render_height'],['get','height'],9]],
+              'fill-extrusion-height':['interpolate',['linear'],['zoom'],12,0,14.5,['coalesce',['get','render_height'],['get','height'],['*',['to-number',['get','building:levels'],3],3],9]],
               'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],
               'fill-extrusion-opacity':1,
               'fill-extrusion-vertical-gradient':true
@@ -177,8 +177,13 @@ export default function Home() {
           },labelLayer?.id);
         }
         if(!map.getLayer('unfold-building-edges')){
-          map.addLayer({id:'unfold-building-edges',type:'line',source:'openmaptiles','source-layer':'building',minzoom:14,
-            paint:{'line-color':'#393a30','line-width':['interpolate',['linear'],['zoom'],14,0.25,17,0.65],'line-opacity':0.65}
+          map.addLayer({id:'unfold-building-edges',type:'line',source:'openmaptiles','source-layer':'building',minzoom:13.8,
+            paint:{
+              'line-color':['interpolate',['linear'],['zoom'],14,'#565346',17,'#35352e'],
+              'line-width':['interpolate',['linear'],['zoom'],13.8,0.35,15,0.7,17,1.05,19,1.3],
+              'line-opacity':['interpolate',['linear'],['zoom'],14,0.48,16,0.72,19,0.86],
+              'line-blur':0
+            }
           },labelLayer?.id);
         }
         if(!map.getLayer('unfold-famous-buildings')){
