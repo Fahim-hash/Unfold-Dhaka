@@ -168,11 +168,17 @@ export default function Home() {
             minzoom:13,
             filter:['!=',['get','hide_3d'],'true'],
             paint:{
-              'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],['get','height'],8],0,'#c9d5c7',20,'#9db8a8',60,'#d8c8ad',120,'#b4c6c1'],
-              'fill-extrusion-height':['interpolate',['linear'],['zoom'],13,0,15,['coalesce',['get','render_height'],['get','height'],8]],
+              'fill-extrusion-color':['match',['%', ['to-number',['id'],0], 11],0,'#c9b18a',1,'#9ebbb0',2,'#b9a9c7',3,'#d3a58d',4,'#a5b6bd',5,'#c9c5a1',6,'#b7a1a6',7,'#8eaa91',8,'#c7b49c',9,'#a9a58d',10,'#90a9b4','#c9b18a'],
+              'fill-extrusion-height':['interpolate',['linear'],['zoom'],12.2,0,14.5,['coalesce',['get','render_height'],['get','height'],9]],
               'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],
-              'fill-extrusion-opacity':0.9
+              'fill-extrusion-opacity':1,
+              'fill-extrusion-vertical-gradient':true
             }
+          },labelLayer?.id);
+        }
+        if(!map.getLayer('unfold-building-edges')){
+          map.addLayer({id:'unfold-building-edges',type:'line',source:'openmaptiles','source-layer':'building',minzoom:14,
+            paint:{'line-color':'#393a30','line-width':['interpolate',['linear'],['zoom'],14,0.25,17,0.65],'line-opacity':0.65}
           },labelLayer?.id);
         }
         if(!map.getLayer('unfold-famous-buildings')){
