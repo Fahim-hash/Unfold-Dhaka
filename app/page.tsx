@@ -246,7 +246,7 @@ export default function Home() {
           }
           ctx.fillStyle='#101d19';
           for(const y of [-23,17]){ctx.fillRect(-21,y,5,13);ctx.fillRect(16,y,5,13);}
-          map.addImage(id,canvas,{pixelRatio:2});
+          map.addImage(id,ctx.getImageData(0,0,canvas.width,canvas.height),{pixelRatio:2});
         };
         drawVehicle('unfold-vehicle-car','car','#e8efe0');
         drawVehicle('unfold-vehicle-bus','bus','#e7a34f');
