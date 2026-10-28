@@ -227,3 +227,8 @@ button:active{transform:translateY(1px)}
 @media(max-width:1000px){.map-quick-dock{right:10px;top:109px;width:174px}.map-quick-dock>button{min-height:47px;padding:7px}.quick-glyph{width:28px;height:28px;flex-basis:28px}}
 @media(max-width:700px){.map-quick-dock{top:110px;right:8px;width:48px;gap:6px}.map-quick-dock>button{width:42px;min-height:42px;height:42px;justify-content:center;padding:5px;border-radius:12px}.quick-copy,.quick-arrow,.quick-switch{display:none}.quick-glyph{width:29px;height:29px;flex-basis:29px;font-size:18px}.cinematic-mode .map-top .brand{opacity:.65}.cinematic-mode .map-top{pointer-events:none}.cinematic-mode .map-top .brand{pointer-events:auto}}
 @media(prefers-reduced-motion:reduce){.map-quick-dock>button,.quick-switch,.quick-switch:after,.cinematic-mode *{transition:none!important;animation:none!important}}
+
+.cinema-exit{position:absolute;z-index:60;top:12px;right:14px;display:flex;align-items:center;gap:9px;padding:10px 13px;border:1px solid #5d587b;border-radius:10px;background:#17162bf0;color:#f5f1ff;box-shadow:0 8px 25px #0005;font-size:12px;font-weight:700;backdrop-filter:blur(16px)}
+.cinema-exit span{color:#75e3c1;font-size:17px}
+.cinema-exit kbd{padding:3px 5px;border:1px solid #494461;border-radius:4px;color:#b8b2cc;font:9px var(--mono)}
+@media(max-width:700px){.cinema-exit{top:66px;right:8px;padding:9px 10px;font-size:11px}}
