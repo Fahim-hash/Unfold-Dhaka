@@ -120,6 +120,7 @@ export default function Home() {
   const [placePhoto,setPlacePhoto] = useState<{id:number;url:string;title:string;source:string}|null>(null);
   const [photoLoading,setPhotoLoading] = useState(false);
   const [trafficOn,setTrafficOn] = useState(true);
+  const [timeOfDay,setTimeOfDay] = useState(16.5);
   const [trafficStatus,setTrafficStatus] = useState<'loading'|'roads-ready'|'demo-network'|'offline'>('loading');
   const filtered = useMemo(()=>places.filter(p=>(panel==='saved'||kind==='All places'||p.kind===kind)&&(panel==='saved'||area==='All Greater Dhaka'||p.area===area)&&(panel!=='saved'||favorites.includes(p.id))&&(p.name+' '+p.bn+' '+p.area+' '+p.kind).toLowerCase().includes(query.toLowerCase())),[query,kind,area,panel,favorites]);
   const choose = useCallback((p:Place,fly=true)=>{
@@ -426,10 +427,41 @@ export default function Home() {
     <div className="map-canvas" ref={mapContainer} aria-label="Interactive 3D map of Greater Dhaka"/>
     {!mapReady&&<div className="map-loading" role="status"><span className="loading-mark">u<span>↗</span></span><b>Unfold Dhaka</b><span>Preparing your 3D city…</span><div className="loading-track"><i/></div></div>}
     <header className="map-top">
-      <a className="brand" href="/" aria-label="Unfold Dhaka home"><span className="brand-mark">u<span>↗</span></span><span><b>unfold<span>dhaka</span></b><small>GREATER DHAKA, IN 3D</small></span></a>
-      <label className="map-search"><span>⌕</span><input ref={searchInputRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder={bn?'জায়গা খুঁজুন…':'Search places, neighbourhoods…'} aria-label="Search places"/>{query&&<button onClick={()=>setQuery('')} aria-label="Clear search">×</button>}<kbd>⌘ K</kbd></label>
-      <div className="top-actions"><button className="language" onClick={()=>setBn(!bn)}>{bn?'EN':'বাংলা'}</button><button className="location-button" onClick={useMyLocation}>{locating?'Locating…':'◎ Near me'}</button></div>
+      <a className="brand" href="/" aria-label="Unfold Dhaka home"><span className="brand-mark">⌖</span><span><b>Cholo Puran Dhaka</b><small>চলো পুরান ঢাকায়</small></span></a>
+      <nav className="map-nav" aria-label="Main navigation">
+        <button className="nav-active" onClick={()=>{setMobilePanel(false);setSelected(null);}}>Map</button>
+        <button onClick={()=>{setPanel('journey');setMobilePanel(true);}}>Routes</button>
+        <button onClick={()=>setNotice('Tips: explore a neighbourhood, select a landmark, and add stops to plan a route.')}>Tips</button>
+        <button onClick={()=>{setPanel('explore');setMobilePanel(true);}}>Places</button>
+        <button onClick={()=>setNotice('History highlights are available by selecting heritage landmarks on the map.')}>History</button>
+        <button onClick={()=>setNotice('Cholo Puran Dhaka is an interactive 3D exploration of Greater Dhaka.')}>About</button>
+      </nav>
+      <label className="map-search"><span>⌕</span><input ref={searchInputRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder={bn?'জায়গা খুঁজুন…':'Search places, food, mahallas'} aria-label="Search places"/>{query&&<button onClick={()=>setQuery('')} aria-label="Clear search">×</button>}</label>
+      <div className="top-actions"><button className="language" onClick={()=>setBn(!bn)}>{bn?'EN':'বাংলা'}</button></div>
     </header>
+    <div className="map-category-bar" aria-label="Explore categories">
+      <button className={kind==='All places'?'category-active':''} onClick={()=>setKind('All places')}><i className="category-dot open-dot"/>Open now</button>
+      <button className={kind==='Heritage'?'category-active':''} onClick={()=>setKind('Heritage')}><span className="category-icon heritage-icon">⌂</span>Heritage <small>{places.filter(p=>p.kind==='Heritage').length}</small></button>
+      <button className={kind==='Food'?'category-active':''} onClick={()=>{setKind('Food');setNotice('Food places are not yet included in the current verified place dataset.');}}><span className="category-icon food-icon">♨</span>Food <small>—</small></button>
+      <button className={kind==='Hidden gem'?'category-active':''} onClick={()=>{setKind('All places');setNotice('Explore lesser-known places by browsing the map and selecting a marker.');}}><span className="category-icon gem-icon">✦</span>Hidden gem</button>
+      <button className={kind==='Photo spot'?'category-active':''} onClick={()=>{setKind('All places');setNotice('Select a landmark to view available photography.');}}><span className="category-icon photo-icon">▣</span>Photo spot</button>
+      <button className={kind==='Shopping'?'category-active':''} onClick={()=>setKind('Shopping')}><span className="category-icon market-icon">▦</span>Market <small>{places.filter(p=>p.kind==='Shopping').length}</small></button>
+      <button className={kind==='Culture'?'category-active':''} onClick={()=>setKind('Culture')}><span className="category-icon worship-icon">♜</span>Worship <small>{places.filter(p=>p.kind==='Culture').length}</small></button>
+      <button className={kind==='Riverside'?'category-active':''} onClick={()=>setKind('Riverside')}><span className="category-icon river-icon">≈</span>River <small>{places.filter(p=>p.kind==='Riverside').length}</small></button>
+      <button className={kind==='Festival'?'category-active':''} onClick={()=>{setKind('All places');setNotice('Festival listings are not yet included in the current place dataset.');}}><span className="category-icon festival-icon">✹</span>Festival</button>
+    </div>
+    <section className="time-control" aria-label="Time of day explorer">
+      <div className="time-control-heading"><span>Time of day</span><b>{Math.floor(timeOfDay)>12?Math.floor(timeOfDay)-12:Math.floor(timeOfDay)}:{Math.round((timeOfDay%1)*60).toString().padStart(2,'0')} {timeOfDay>=12?'pm':'am'}</b></div>
+      <input type="range" min="5" max="21" step="0.5" value={timeOfDay} onChange={e=>setTimeOfDay(Number(e.target.value))} aria-label="Choose time of day"/>
+      <div className="time-ticks"><span>5</span><span>9</span><span>13</span><span>17</span><span>21</span></div>
+      <div className="time-suggestion"><b>Good around this time</b><span> · estimates</span></div>
+      <div className="suggestion-tags">{['Khan Mohammad Mridha Mosque','Rup Lal House','Pogose School','Christian Cemetery, Narinda','Cafe Corner'].map((name,i)=><button key={name} onClick={()=>{const p=places.find(x=>x.name.toLowerCase().includes(name.split(' ')[0].toLowerCase())||x.bn.includes(name));if(p)choose(p);else setNotice('This suggestion is illustrative and is not yet linked to a verified place record.');}}><i className={'suggestion-square square-'+(i%3)}/>{name}</button>)}</div>
+    </section>
+    <div className="map-side-actions">
+      <button onClick={useMyLocation}>◎ <span>{locating?'Locating…':'Near me'}</span></button>
+      <button onClick={()=>{const map=mapRef.current;if(map){const flat=map.getPitch()<10;map.easeTo({pitch:flat?62:0,bearing:flat?-18:0,duration:700});setNotice(flat?'3D street view enabled.':'Flat street map view enabled.');}}}>▱ <span>Street map</span></button>
+      <button className="walk-action" onClick={()=>{setPanel('journey');setMobilePanel(true);}}>♙ <span>Walk the lanes</span></button>
+    </div>
     {mobilePanel&&<button className="panel-backdrop" aria-label="Close places panel" onClick={()=>setMobilePanel(false)}/>}
     <aside className={'map-panel '+(mobilePanel?'panel-open':'')}>
       <div className="panel-tabs"><button className={panel==='explore'?'active':''} onClick={()=>setPanel('explore')}>Explore</button><button className={panel==='journey'?'active':''} onClick={()=>setPanel('journey')}>My journey <span>{route.length}</span></button><button className={panel==='saved'?'active':''} onClick={()=>setPanel('saved')}>Saved <span>{favorites.length}</span></button><button className="panel-close" onClick={()=>setMobilePanel(false)}>×</button></div>
