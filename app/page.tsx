@@ -121,6 +121,7 @@ export default function Home() {
   const [photoLoading,setPhotoLoading] = useState(false);
   const [trafficOn,setTrafficOn] = useState(true);
   const [timeOfDay,setTimeOfDay] = useState(16.5);
+  const [cinematicMode,setCinematicMode] = useState(false);
   const [trafficStatus,setTrafficStatus] = useState<'loading'|'roads-ready'|'demo-network'|'offline'>('loading');
   const filtered = useMemo(()=>places.filter(p=>(panel==='saved'||kind==='All places'||p.kind===kind)&&(panel==='saved'||area==='All Greater Dhaka'||p.area===area)&&(panel!=='saved'||favorites.includes(p.id))&&(p.name+' '+p.bn+' '+p.area+' '+p.kind).toLowerCase().includes(query.toLowerCase())),[query,kind,area,panel,favorites]);
   const choose = useCallback((p:Place,fly=true)=>{
@@ -423,7 +424,7 @@ export default function Home() {
   const nearest=useMemo(()=>nearby?[...filtered].sort((a,b)=>distanceKm(nearby,a)-distanceKm(nearby,b)):filtered,[nearby,filtered]);
   const toggleFavorite=(p:Place)=>setFavorites(prev=>prev.includes(p.id)?prev.filter(id=>id!==p.id):[...prev,p.id]);
   const flyToArea=(a:string)=>{setArea(a);const bounds:Record<string,[[number,number],[number,number]]>={'Old Dhaka':[[90.37,23.69],[90.42,23.73]],'Shahbagh':[[90.38,23.72],[90.41,23.75]],'Ramna':[[90.38,23.72],[90.42,23.75]],'Central Dhaka':[[90.38,23.72],[90.43,23.78]],'Dhanmondi':[[90.36,23.72],[90.40,23.77]],'Gulshan':[[90.39,23.77],[90.44,23.82]],'Mirpur':[[90.32,23.78],[90.38,23.84]],'Uttara':[[90.36,23.84],[90.43,23.90]],'Narayanganj':[[90.46,23.59],[90.55,23.64]],'University Area':[[90.385,23.725],[90.405,23.74]],'Segunbagicha':[[90.395,23.725],[90.415,23.745]],'Agargaon':[[90.365,23.765],[90.395,23.79]],'Sher-e-Bangla Nagar':[[90.36,23.745],[90.395,23.78]],'Baridhara':[[90.405,23.795],[90.44,23.825]],'Banani':[[90.39,23.78],[90.42,23.81]],'Wari':[[90.405,23.705],[90.43,23.73]],'Savar':[[90.24,23.88],[90.29,23.94]],'Ashulia':[[90.29,23.86],[90.36,23.92]],'Tongi':[[90.385,23.88],[90.43,23.92]],'Satarkul':[[90.43,23.77],[90.48,23.82]]};const b=bounds[a];if(b)mapRef.current?.fitBounds(b,{padding:100,duration:850,pitch:60});else mapRef.current?.flyTo({center:[90.405,23.752],zoom:11,pitch:58,duration:850});};
-  return <main className="map-app">
+  return <main className={'map-app '+(cinematicMode?'cinematic-mode':'')}>
     <div className="map-canvas" ref={mapContainer} aria-label="Interactive 3D map of Greater Dhaka"/>
     {!mapReady&&<div className="map-loading" role="status"><span className="loading-mark">u<span>↗</span></span><b>Unfold Dhaka</b><span>Preparing your 3D city…</span><div className="loading-track"><i/></div></div>}
     <header className="map-top">
@@ -457,6 +458,12 @@ export default function Home() {
       <div className="time-suggestion"><b>Good around this time</b><span> · estimates</span></div>
       <div className="suggestion-tags">{['Khan Mohammad Mridha Mosque','Rup Lal House','Pogose School','Christian Cemetery, Narinda','Cafe Corner'].map((name,i)=><button key={name} onClick={()=>{const p=places.find(x=>x.name.toLowerCase().includes(name.split(' ')[0].toLowerCase())||x.bn.includes(name));if(p)choose(p);else setNotice('This suggestion is illustrative and is not yet linked to a verified place record.');}}><i className={'suggestion-square square-'+(i%3)}/>{name}</button>)}</div>
     </section>
+    <div className="map-quick-dock" aria-label="Interactive map tools">
+      <button className={trafficOn?'quick-active':''} onClick={()=>setTrafficOn(v=>!v)} title={trafficOn?'Hide animated traffic':'Show animated traffic'} aria-pressed={trafficOn}><span className="quick-glyph">⌁</span><span className="quick-copy"><b>Traffic flow</b><small>{trafficOn?'Animated':'Paused'}</small></span><i className={'quick-switch '+(trafficOn?'switch-on':'')}/></button>
+      <button onClick={()=>{const pool=filtered.length?filtered:places;const next=pool[Math.floor(Math.random()*pool.length)];if(next){setPanel('explore');choose(next);setNotice('A little Dhaka detour: '+next.name+'.');}}} title="Discover a random place"><span className="quick-glyph">✳</span><span className="quick-copy"><b>Surprise me</b><small>Find a hidden story</small></span><span className="quick-arrow">↗</span></button>
+      <button className={cinematicMode?'quick-active':''} onClick={()=>{setCinematicMode(v=>!v);if(!cinematicMode){setMobilePanel(false);setSelected(null);}setNotice(cinematicMode?'Explorer controls restored.':'Cinematic mode: enjoy the city without distractions.');}} title="Toggle cinematic mode" aria-pressed={cinematicMode}><span className="quick-glyph">◈</span><span className="quick-copy"><b>{cinematicMode?'Exit cinema':'Cinematic view'}</b><small>{cinematicMode?'Show all controls':'Map-only experience'}</small></span><span className="quick-arrow">↗</span></button>
+      <button onClick={()=>mapRef.current?.easeTo({center:[90.405,23.752],zoom:13,pitch:62,bearing:-18,duration:1000})} title="Reset map camera"><span className="quick-glyph">⟳</span><span className="quick-copy"><b>Reset camera</b><small>Return to city view</small></span><span className="quick-arrow">↗</span></button>
+    </div>
     <div className="map-side-actions">
       <button onClick={useMyLocation}>◎ <span>{locating?'Locating…':'Near me'}</span></button>
       <button onClick={()=>{const map=mapRef.current;if(map){const flat=map.getPitch()<10;map.easeTo({pitch:flat?62:0,bearing:flat?-18:0,duration:700});setNotice(flat?'3D street view enabled.':'Flat street map view enabled.');}}}>▱ <span>Street map</span></button>
